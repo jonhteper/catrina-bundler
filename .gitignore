@@ -1,0 +1,5 @@
+# Using for deploy
+/bin
+
+# rust build files
+/target

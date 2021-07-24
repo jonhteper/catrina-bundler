@@ -1,0 +1,17 @@
+[package]
+name = "catrina-bundler"
+version = "0.0.1"
+authors = ["jonhteper <jonhteper@triamseletea.com>"]
+edition = "2018"
+
+[profile.release]
+lto = true
+
+
+[dependencies]
+serde = "1.0.126"
+serde_json = "1.0.64"
+serde_derive = "1.0.126"
+fs_extra = "1.2.0"
+eyre = "0.6.5"
+clap = "2.33.3"
