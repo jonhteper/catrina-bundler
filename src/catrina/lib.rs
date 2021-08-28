@@ -1,50 +1,53 @@
-use self::fs_extra::dir;
-use crate::catrina::utils::bin_dir;
+use crate::catrina::utils::{bin_dir, getwd};
 use crate::catrina::VERSION_APP;
+use eyre::Result;
 use std::fs;
 use std::path::PathBuf;
-
-extern crate fs_extra;
+use std::process::Command;
 
 pub struct StdLib {
-    pub version: String,
-    current_path: PathBuf,
+    npm: bool,
 }
 
 impl StdLib {
-    pub fn new(version: &str, path: PathBuf) -> StdLib {
-        StdLib {
-            version: version.to_string(),
-            current_path: path,
-        }
+    pub fn new(default: bool) -> Self {
+        StdLib { npm: default }
     }
 
-    pub fn get(&self) -> Result<(), fs_extra::error::Error> {
-        let mut path_from = bin_dir();
-        path_from.push("lib");
-        path_from.push(&self.version);
-
-        let mut from = Vec::new();
-        from.push(path_from.to_str().unwrap());
-
-        fs_extra::copy_items(
-            &from,
-            &self.current_path.to_str().unwrap(),
-            &dir::CopyOptions::new(),
-        )?;
-
-        &self.rename_after_copy()?;
+    ///    install catrina package from npm
+    pub fn install(&self) -> Result<()> {
+        if self.npm {
+            StdLib::install_by_npm()
+                .expect("Error using npm. Please make sure you have the program installed")
+        } else {
+            StdLib::install_by_yarn()
+                .expect("Error using yarn. Please make sure you have the program installed")
+        }
 
         Ok(())
     }
 
-    fn rename_after_copy(&self) -> std::io::Result<()> {
-        let mut from_path = PathBuf::from(&self.current_path);
-        from_path.push(VERSION_APP);
-        let mut to_path = PathBuf::from(&self.current_path);
-        to_path.push("lib");
+    fn install_by_npm() -> Result<()> {
+        /* exec
+         * npm init -y
+         * npm install --save catrina
+         */
+        let _output = Command::new("npm").args(&["init", "-y"]).output()?;
+        let _output = Command::new("npm")
+            .args(&["install", "--save", "catrina"])
+            .output()?;
 
-        fs::rename(from_path, to_path)?;
+        Ok(())
+    }
+
+    fn install_by_yarn() -> Result<()> {
+        /* exec
+         * yarn init -y
+         * yarn add catrina
+         */
+        let _output = Command::new("yarn").args(&["init", "-y"]).output()?;
+        let _output = Command::new("yarn").args(&["add", "catrina"]).output()?;
+
         Ok(())
     }
 }

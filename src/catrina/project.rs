@@ -22,42 +22,44 @@ impl Project {
         Ok(Project { config, name })
     }
 
-    fn create_environment(&self) {
-        fs::create_dir_all(&format!("{}/{}", &self.name, &self.config.deployPath));
-        Project::create_input_file(&self.config.inputFileJs, &self.name);
-        Project::create_input_file(&self.config.inputFileCSS, &self.name);
+    fn create_environment(&self) -> Result<()> {
+        fs::create_dir_all(&self.config.deploy_path)?;
+        Project::create_input_file(&self.config.input_js)?;
+        Project::create_input_file(&self.config.input_css)?;
         File::create(&format!(
-            "{}/{}/{}",
-            &self.name, &self.config.deployPath, &self.config.finalFileJS
-        ));
+            "{}/{}",
+            &self.config.deploy_path, &self.config.out_js
+        ))?;
         File::create(&format!(
-            "{}/{}/{}",
-            &self.name, &self.config.deployPath, &self.config.finalFileCSS
-        ));
+            "{}/{}",
+            &self.config.deploy_path, &self.config.out_css
+        ))?;
+
+        Ok(())
     }
 
-    fn create_input_file(file: &String, project: &String) {
-        let mut project_path = PathBuf::from(&project);
+    fn create_input_file(file: &String) -> Result<()> {
+        let mut project_path = getwd();
         let parent_file = Path::new(&file).parent().unwrap();
 
         if parent_file.to_str().unwrap().to_string() != String::from("") {
             project_path.push(parent_file);
-            fs::create_dir_all(&project_path);
+            fs::create_dir_all(&project_path)?;
 
-            let mut file_location = PathBuf::from(&project);
+            let mut file_location = getwd();
             file_location.push(file);
-            File::create(file_location);
-            return;
+            File::create(file_location)?;
+            return Ok(());
         }
 
         project_path.push(file);
-        File::create(project_path);
+        File::create(project_path)?;
+        Ok(())
     }
 
     fn your_file_config_content(project: &String) {
         let mut data = String::new();
-        let reference =
-            File::open(&format!("{}/{}", project, CONFIG_FILE)).expect("Error reading config file");
+        let reference = File::open(CONFIG_FILE).expect("Error reading config file");
         let mut br = BufReader::new(reference);
         br.read_to_string(&mut data).expect("Error parsing data");
         println!("\nYour project configuration:\n{}", data);
@@ -65,19 +67,9 @@ impl Project {
     }
 
     pub fn start(&self) {
-        &self.config.create_file(&self.name);
+        &self.config.create_file();
         &self.create_environment();
         Project::your_file_config_content(&self.name);
-    }
-
-    pub fn update_lib(&self) -> Result<()> {
-        let mut actual_path = getwd();
-        actual_path.push("lib");
-        fs::remove_dir_all(actual_path)?;
-
-        let std_lib = StdLib::new(&self.config.versionLib, getwd());
-        std_lib.get()?;
-        Ok(())
     }
 
     pub fn build(&self) -> Result<()> {
@@ -93,7 +85,7 @@ impl Project {
 
 pub fn auto_project(project_name: &String) {
     let project = Project {
-        config: standard_config(),
+        config: standard_config(project_name),
         name: project_name.to_string(),
     };
 
@@ -102,13 +94,14 @@ pub fn auto_project(project_name: &String) {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
-    pub inputFileJs: String,
-    pub inputFileCSS: String,
-    pub deployPath: String,
-    pub finalFileJS: String,
-    pub finalFileCSS: String,
-    pub serverPort: String,
-    pub versionLib: String,
+    pub input_js: String,
+    pub input_css: String,
+    pub deploy_path: String,
+    pub out_js: String,
+    pub out_css: String,
+    pub server_port: String,
+    pub location_lib: String,
+    pub module: bool,
 }
 
 impl Config {
@@ -118,12 +111,9 @@ impl Config {
         Ok(config)
     }
 
-    pub fn create_file(&self, project: &String) {
-        fs::create_dir_all(project);
-
+    pub fn create_file(&self) {
         let data = serde_json::to_string_pretty(&self).unwrap();
-        let file = File::create(&format!("{}/{}", project, CONFIG_FILE))
-            .expect("Error creating config file");
+        let file = File::create(CONFIG_FILE).expect("Error creating config file");
 
         BufWriter::new(file)
             .write_all(data.as_bytes())
@@ -131,14 +121,15 @@ impl Config {
     }
 }
 
-pub fn standard_config() -> Config {
+pub fn standard_config(project_name: &str) -> Config {
     Config {
-        inputFileJs: "input.js".to_string(),
-        inputFileCSS: "input.css".to_string(),
-        deployPath: "./deploy".to_string(),
-        finalFileJS: "main.js".to_string(),
-        finalFileCSS: "styles.css".to_string(),
-        serverPort: DEFAULT_PORT.to_string(),
-        versionLib: VERSION_APP.to_string(),
+        input_js: "input.js".to_string(),
+        input_css: "input.css".to_string(),
+        deploy_path: "./deploy".to_string(),
+        out_js: format!("{}.main.js", project_name),
+        out_css: format!("{}.styles.css", project_name),
+        server_port: DEFAULT_PORT.to_string(),
+        location_lib: "node_modules/catrina".to_string(),
+        module: false,
     }
 }
