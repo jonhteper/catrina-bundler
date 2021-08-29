@@ -7,6 +7,8 @@ use std::fs;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
+use rand::{thread_rng, Rng};
+use rand::distributions::Alphanumeric;
 
 extern crate serde;
 extern crate serde_json;
@@ -57,7 +59,7 @@ impl Project {
         Ok(())
     }
 
-    fn your_file_config_content(project: &String) {
+    fn your_file_config_content() {
         let mut data = String::new();
         let reference = File::open(CONFIG_FILE).expect("Error reading config file");
         let mut br = BufReader::new(reference);
@@ -69,18 +71,50 @@ impl Project {
     pub fn start(&self) {
         &self.config.create_file();
         &self.create_environment();
-        Project::your_file_config_content(&self.name);
+        Project::your_file_config_content();
+    }
+
+
+    fn generate_temp_dir() -> Result<PathBuf> {
+        let rand_name: String = thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(15)
+            .map(char::from)
+            .collect();
+
+        fs::create_dir(&rand_name)?;
+
+        let mut location = getwd();
+        location.push(&rand_name);
+        Ok(location)
+
     }
 
     pub fn build(&self) -> Result<()> {
-        // TODO build project...
-        let mut files: Vec<String> = vec![];
-        files.push(String::from("file1"));
-        let parser = Parser::new(files);
-        let result = parser.get_imports_from_file("name")?;
-        println!("{}", result);
+        /* TODO build project...
+            -- make temp dir
+            -- bundle js file
+                -- read exports file : catrina/exports.js or catrina/catrina.js
+                -- bundle all catrina js
+                -- create temp file
+                -- read imports
+                -- create imports list
+                -- copy core in temp file
+                -- copy imports in temp file
+                -- replace old bundler for temp file
+            -- bundle css file
+                -- read imports
+                -- create imports list
+                -- write imports in temp file
+                -- replace old bundler for temp file
+                -- copy fonts in deploy dir
+            -- remove temp dir
+        */
+        let temp_location = Project::generate_temp_dir()?;
+
         Ok(())
     }
+
 }
 
 pub fn auto_project(project_name: &String) {

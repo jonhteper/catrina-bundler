@@ -23,16 +23,11 @@ const BUILD_COMMAND: &str = "build";
 
 /// Command catrina init, its works like npm init
 fn catrina_new(skip_flag: bool, yarn_flag: bool) -> Result<()> {
-    let location = getwd();
-    let mut project_name: &str;
-
-    match location.file_stem() {
-        Some(x) => project_name = x.to_str().expect("Error reading folder name"),
-        None => {
-            println!("Error reading folder name");
-            return Ok(());
-        }
-    }
+    let actual_path = getwd();
+    let project_name = actual_path
+        .file_name()
+        .expect("Error reading current directory ");
+    let project_name = project_name.to_str().expect("Error parsing directory name");
 
     // install catrina by npm
     let std_lib = StdLib::new(!yarn_flag);
