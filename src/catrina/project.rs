@@ -3,12 +3,12 @@ use crate::catrina::lib::StdLib;
 use crate::catrina::utils::{file_to_string, getwd};
 use crate::catrina::{CONFIG_FILE, DEFAULT_PORT, VERSION_APP};
 use eyre::Result;
+use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
 use std::fs;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
-use rand::{thread_rng, Rng};
-use rand::distributions::Alphanumeric;
 
 extern crate serde;
 extern crate serde_json;
@@ -74,7 +74,6 @@ impl Project {
         Project::your_file_config_content();
     }
 
-
     fn generate_temp_dir() -> Result<PathBuf> {
         let rand_name: String = thread_rng()
             .sample_iter(&Alphanumeric)
@@ -87,7 +86,6 @@ impl Project {
         let mut location = getwd();
         location.push(&rand_name);
         Ok(location)
-
     }
 
     pub fn build(&self) -> Result<()> {
@@ -114,7 +112,6 @@ impl Project {
 
         Ok(())
     }
-
 }
 
 pub fn auto_project(project_name: &String) {
