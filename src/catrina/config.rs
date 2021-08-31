@@ -40,6 +40,36 @@ impl Config {
     }
 }
 
+/// Create a Config object, whit pre-defined values.
+///
+/// # Arguments
+///
+/// * `project_name`: This arguments named the output files.
+///
+/// returns: Config
+///
+/// # Examples
+///
+/// ```
+/// let project_name = "My-Project";
+/// let mut project = Project {
+///     config: standard_config(project_name),
+///     name: project_name.to_string(),
+///  };
+///
+/// let standard_config_example = Config {
+///     input_js: "input.js".to_string(),
+///     input_css: "input.css".to_string(),
+///     deploy_path: "./deploy".to_string(),
+///     out_js: "My-Project.main.js".to_string(),
+///     out_css: "My-Project.styles.css".to_string(),
+///     server_port: ":9095".to_string(),
+///     location_lib: "node_modules/catrina".to_string(),
+///     module: false,
+/// };
+///
+/// assert_eq!(project.config, standard_config_example);
+/// ```
 pub fn standard_config(project_name: &str) -> Config {
     Config {
         input_js: "input.js".to_string(),

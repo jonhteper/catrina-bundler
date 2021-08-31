@@ -1,4 +1,5 @@
-use crate::catrina::project::{standard_config, Project};
+use crate::catrina::config::standard_config;
+use crate::catrina::project::Project;
 use crate::catrina::utils::read_user_response;
 
 pub fn run_wizard(project_name: &String) {

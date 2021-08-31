@@ -1,3 +1,4 @@
+use crate::catrina::config::{standard_config, Config};
 use crate::catrina::js::Parser;
 use crate::catrina::lib::StdLib;
 use crate::catrina::utils::{file_to_string, getwd};
@@ -9,7 +10,6 @@ use std::fs;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
-use crate::catrina::config::{standard_config, Config};
 
 extern crate serde;
 extern crate serde_json;

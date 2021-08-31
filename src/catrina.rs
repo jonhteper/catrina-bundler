@@ -7,12 +7,12 @@ use eyre::Result;
 use std::fs;
 use std::fs::File;
 
+mod config;
 mod js;
 mod lib;
 mod project;
 mod utils;
 mod wizard;
-mod config;
 
 const DEFAULT_PORT: &str = ":9095";
 const CONFIG_FILE: &str = "catrina.config.json";
