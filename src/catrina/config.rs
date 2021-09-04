@@ -51,6 +51,7 @@ impl Config {
 /// # Examples
 ///
 /// ```
+/// // In /home/user/My-Project
 /// let project_name = "My-Project";
 /// let mut project = Project {
 ///     config: standard_config(project_name),
@@ -64,13 +65,17 @@ impl Config {
 ///     out_js: "My-Project.main.js".to_string(),
 ///     out_css: "My-Project.styles.css".to_string(),
 ///     server_port: ":9095".to_string(),
-///     location_lib: "node_modules/catrina".to_string(),
+///     location_lib: "/home/user/My-Project/node_modules/catrina".to_string(),
 ///     module: false,
 /// };
 ///
 /// assert_eq!(project.config, standard_config_example);
 /// ```
 pub fn standard_config(project_name: &str) -> Config {
+    let mut location = getwd();
+    location.push("node_modules/catrina");
+    let location = location.to_str().expect("");
+
     Config {
         input_js: "input.js".to_string(),
         input_css: "input.css".to_string(),
@@ -78,7 +83,7 @@ pub fn standard_config(project_name: &str) -> Config {
         out_js: format!("{}.main.js", project_name),
         out_css: format!("{}.styles.css", project_name),
         server_port: DEFAULT_PORT.to_string(),
-        location_lib: "node_modules/catrina".to_string(),
+        location_lib: location.to_string(),
         module: false,
     }
 }

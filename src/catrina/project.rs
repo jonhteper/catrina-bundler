@@ -1,25 +1,30 @@
-use crate::catrina::config::{standard_config, Config};
-use crate::catrina::js::Parser;
-use crate::catrina::lib::StdLib;
-use crate::catrina::utils::{file_to_string, getwd};
-use crate::catrina::{CONFIG_FILE, DEFAULT_PORT, VERSION_APP};
-use eyre::Result;
-use rand::distributions::Alphanumeric;
-use rand::{thread_rng, Rng};
 use std::fs;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
 
+use eyre::Result;
+use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
+
+use crate::catrina::config::{standard_config, Config};
+use crate::catrina::import::Import;
+use crate::catrina::js::Parser;
+use crate::catrina::lib::StdLib;
+use crate::catrina::utils::{file_to_string, getwd, random_name};
+use crate::catrina::{CONFIG_FILE, DEFAULT_PORT, VERSION_APP};
+
 extern crate serde;
 extern crate serde_json;
 
+/// Abstraction of a project
 pub(crate) struct Project {
     pub config: Config,
     pub name: String,
 }
 
 impl Project {
+    /// Project constructor from catrina.config.json file, and name
     pub fn from(file: File, name: String) -> Result<Project> {
         let config = Config::from_file(file)?;
         Ok(Project { config, name })
@@ -76,12 +81,7 @@ impl Project {
     }
 
     fn generate_temp_dir() -> Result<PathBuf> {
-        let rand_name: String = thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(15)
-            .map(char::from)
-            .collect();
-
+        let rand_name = random_name(15);
         fs::create_dir(&rand_name)?;
 
         let mut location = getwd();
@@ -91,11 +91,10 @@ impl Project {
 
     pub fn build(&self) -> Result<()> {
         /* TODO build project...
-            -- make temp dir
+            -- make temp dir ✅
             -- bundle js file
-                -- read exports file : catrina/exports.js or catrina/catrina.js
-                -- bundle all catrina js
-                -- create temp file
+                -- read exports file : catrina/exports.js or catrina/catrina.js ✅
+                -- create temp file and copy catrina core js ✅
                 -- read imports
                 -- create imports list
                 -- copy core in temp file
@@ -109,8 +108,27 @@ impl Project {
                 -- copy fonts in deploy dir
             -- remove temp dir
         */
-        let temp_location = Project::generate_temp_dir()?;
+        let mut temp_location = Project::generate_temp_dir()?;
 
+        let mut directory: Vec<Import> = vec![];
+        match StdLib::exports_list(&self.config) {
+            Ok(d) => directory = d,
+            Err(e) => {
+                fs::remove_dir_all(&temp_location)?;
+                println!("Error: {}", e);
+            }
+        }
+
+        match StdLib::bundle_core_js(&directory, &mut temp_location) {
+            Err(e) => {
+                fs::remove_dir_all(&temp_location)?;
+                println!("Error: {}", e);
+            }
+
+            _ => {}
+        }
+
+        //fs::remove_dir_all(temp_location)?;
         Ok(())
     }
 }

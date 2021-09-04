@@ -1,7 +1,6 @@
 use crate::args::CatrinaArgs;
 use crate::catrina::{catrina_tool, VERSION_APP};
-use clap::{App, Arg, SubCommand};
-use std::env;
+use clap::{App, Arg};
 
 mod args;
 mod catrina;
