@@ -1,8 +1,13 @@
-use crate::catrina::utils::file_to_string;
-use eyre::Result;
 use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
+
+use eyre::Result;
+use substring::Substring;
+
+use crate::catrina::config::Config;
+use crate::catrina::utils::file_to_string;
+
 const END_EXPORT: &str = "//@stop";
 pub struct Parser {
     files: Vec<String>,
@@ -14,7 +19,7 @@ impl Parser {
     }
 
     fn search_in_file(names: Vec<&str>, file_path: &PathBuf) -> Result<Option<String>> {
-        let mut file = File::open(file_path)?;
+        let file = File::open(file_path)?;
         let data = file_to_string(file)?;
         let mut result = String::new();
 

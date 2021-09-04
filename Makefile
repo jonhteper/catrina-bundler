@@ -7,9 +7,9 @@ prepare:
 	cp README.md ./bin
 format:
 	cargo fmt
-tool:
+tool: format
 	cd src && cargo build --release
 	cp target/release/catrina-bundler ./bin/catrina
-dev:
+dev: format
 	cd src && cargo build
 	cp target/debug/catrina-bundler ./bin/catrina

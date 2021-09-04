@@ -4,9 +4,10 @@ use crate::catrina::project::{auto_project, Project};
 use crate::catrina::utils::{getwd, read_user_response};
 use crate::catrina::wizard::run_wizard;
 use eyre::Result;
-use std::fs;
 use std::fs::File;
 
+mod config;
+mod import;
 mod js;
 mod lib;
 mod project;
@@ -17,11 +18,10 @@ const DEFAULT_PORT: &str = ":9095";
 const CONFIG_FILE: &str = "catrina.config.json";
 pub const VERSION_APP: &str = "v0.0.1";
 const START_COMMAND: &str = "init";
-const UPDATE_COMMAND: &str = "update";
 const RUN_SERVER_COMMAND: &str = "run";
 const BUILD_COMMAND: &str = "build";
 
-/// Command catrina init, its works like npm init
+/// Create a new project in current path, use npm or yarn depending on the flags
 fn catrina_new(skip_flag: bool, yarn_flag: bool) -> Result<()> {
     let actual_path = getwd();
     let project_name = actual_path
@@ -51,6 +51,7 @@ fn catrina_new(skip_flag: bool, yarn_flag: bool) -> Result<()> {
     Ok(())
 }
 
+/// Create a Project object based in a catrina.config.json file in current file
 fn project_from_location() -> Result<Project> {
     let actual_path = getwd();
     let project_name = actual_path
@@ -66,24 +67,30 @@ fn project_from_location() -> Result<Project> {
     Ok(project)
 }
 
-fn catrina_update(flag: bool) -> Result<()> {
-    println!("Deprecated!!");
+/// Create a server in project path, using the config port
+fn catrina_run_server() -> Result<()> {
+    println!("Work in progress...");
     Ok(())
 }
 
+/// Run the bundlering functions.
 fn catrina_build() -> Result<()> {
     let project = project_from_location()?;
     project.build()?;
     Ok(())
 }
 
+/// Run the app
 pub fn catrina_tool(args: CatrinaArgs) -> Result<()> {
     match &args.action {
         &START_COMMAND => catrina_new(args.skip, args.yarn)?,
-        &UPDATE_COMMAND => catrina_update(args.skip)?,
+        &RUN_SERVER_COMMAND => catrina_run_server()?,
         &BUILD_COMMAND => catrina_build()?,
         _ => {
-            println!("{}", &args.action);
+            println!(
+                "No such command {}. Run catrina --help for more info.",
+                &args.action
+            );
         }
     }
     Ok(())
