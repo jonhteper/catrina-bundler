@@ -73,7 +73,7 @@ fn catrina_run_server() -> Result<()> {
     Ok(())
 }
 
-/// Run the bundlering functions.
+/// Run the bundler functions.
 fn catrina_build() -> Result<()> {
     let project = project_from_location()?;
     project.build()?;

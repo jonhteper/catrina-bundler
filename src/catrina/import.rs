@@ -19,7 +19,7 @@ impl Import {
     /// // check no spaces in import list
     /// export {Alert,salert} from "./alerts/alert.js"
     /// ```
-    pub fn new_from_line(line: String, config: &Config) -> eyre::Result<Self> {
+    pub fn new_from_line(line: String, config: &Config, canonicalize: bool) -> eyre::Result<Self> {
         let error_msj = "Error with export line un exports file";
         let s = line.split(" ").collect::<Vec<&str>>();
         let names = s.get(1).expect(&error_msj);
@@ -34,10 +34,18 @@ impl Import {
         }
 
         let raw_path = s.get(3).expect(&error_msj);
-        let raw_path = raw_path.replace("\"", "").replace("./", "");
+        let raw_path = raw_path
+            .replace("\"", "")
+            .replace("./", "")
+            .replace(";", "");
+        let mut path_buf: PathBuf;
 
-        let path_buf =
-            PathBuf::from(format!("{}/{}", config.location_lib, raw_path)).canonicalize()?;
+        if canonicalize {
+            path_buf =
+                PathBuf::from(format!("{}/{}", config.location_lib, raw_path)).canonicalize()?;
+        } else {
+            path_buf = PathBuf::from(raw_path);
+        }
 
         let path = path_buf.to_str().expect(&error_msj);
 

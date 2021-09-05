@@ -1,6 +1,6 @@
 use std::fs;
 use std::fs::File;
-use std::io::{BufReader, BufWriter, Read, Write};
+use std::io::{BufRead, BufReader, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
 
 use eyre::Result;
@@ -80,14 +80,29 @@ impl Project {
         Project::your_file_config_content();
     }
 
-    fn generate_temp_dir() -> Result<PathBuf> {
-        let rand_name = random_name(15);
-        fs::create_dir(&rand_name)?;
-
+    fn generate_temp_dir(name: &String) -> Result<PathBuf> {
+        fs::create_dir(&name)?;
         let mut location = getwd();
-        location.push(&rand_name);
+        location.push(&name);
         Ok(location)
     }
+
+    fn get_imports_js(&self) -> Result<Vec<Import>> {
+        let mut imports: Vec<Import> = vec![];
+        let input_file = File::open(&self.config.input_js).expect("No such input file");
+        let reader = BufReader::new(&input_file);
+
+        for (_, file_line) in reader.lines().enumerate() {
+            let line = file_line.unwrap_or("".to_string());
+            println!("{}", line);
+            if line.contains("import") && line.contains("catrina") && !line.contains("core") {
+                let import = Import::new_from_line(line, &self.config, false)?;
+                imports.push(import);
+            }
+        }
+
+        Ok(imports)
+    } // get_imports_js method
 
     pub fn build(&self) -> Result<()> {
         /* TODO build project...
@@ -95,10 +110,10 @@ impl Project {
             -- bundle js file
                 -- read exports file : catrina/exports.js or catrina/catrina.js ✅
                 -- create temp file and copy catrina core js ✅
-                -- read imports
-                -- create imports list
-                -- copy core in temp file
+                -- read imports ✅
+                -- create imports list ✅
                 -- copy imports in temp file
+                -- remove comments (optional)
                 -- replace old bundler for temp file
             -- bundle css file
                 -- read imports
@@ -108,7 +123,8 @@ impl Project {
                 -- copy fonts in deploy dir
             -- remove temp dir
         */
-        let mut temp_location = Project::generate_temp_dir()?;
+        let rand_name = random_name(15);
+        let mut temp_location = Project::generate_temp_dir(&rand_name)?;
 
         let mut directory: Vec<Import> = vec![];
         match StdLib::exports_list(&self.config) {
@@ -128,9 +144,27 @@ impl Project {
             _ => {}
         }
 
+        let mut js_imports: Vec<Import> = vec![];
+        match self.get_imports_js() {
+            Ok(imports) => js_imports = imports,
+            Err(e) => {
+                fs::remove_dir_all(&temp_location)?;
+                println!("Error: {}", e);
+            }
+        }
+
+        let parser_js = Parser::new(directory);
+        match parser_js.print_imports(js_imports, &temp_location) {
+            Ok(_) => {}
+            Err(e) => {
+                fs::remove_dir_all(&temp_location)?;
+                println!("Error: {}", e);
+            }
+        }
+        // Error with temp_location var... TODO, check this
         //fs::remove_dir_all(temp_location)?;
         Ok(())
-    }
+    } // build method
 }
 
 pub fn auto_project(project_name: &String) {

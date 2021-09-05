@@ -24,7 +24,7 @@ impl StdLib {
         StdLib { npm: default }
     }
 
-    ///    install catrina package from npm
+    ///    install catrina package from npm or yarn
     pub fn install(&self) -> Result<()> {
         if self.npm {
             StdLib::install_by_npm()
@@ -100,7 +100,7 @@ impl StdLib {
         let mut exports_list: Vec<Import> = vec![];
 
         for line in exports {
-            let export = Import::new_from_line(line, config)?;
+            let export = Import::new_from_line(line, config, true)?;
             exports_list.push(export);
         } // for lines
 
@@ -110,7 +110,6 @@ impl StdLib {
     /// Copy core in a temp file whit name of temp location like this:
     /// `randomName.bundle.js`.
     pub fn bundle_core_js(directory: &Vec<Import>, temp_location: &mut PathBuf) -> Result<()> {
-        println!("{:?}", temp_location);
         let filename = temp_location
             .file_name()
             .unwrap_or(OsStr::new(""))
