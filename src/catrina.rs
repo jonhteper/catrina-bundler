@@ -16,7 +16,7 @@ mod wizard;
 
 const DEFAULT_PORT: &str = ":9095";
 const CONFIG_FILE: &str = "catrina.config.json";
-pub const VERSION_APP: &str = "v0.0.1";
+pub const VERSION_APP: &str = "v0.0.2";
 const START_COMMAND: &str = "init";
 const RUN_SERVER_COMMAND: &str = "run";
 const BUILD_COMMAND: &str = "build";
@@ -35,7 +35,7 @@ fn catrina_new(skip_flag: bool, yarn_flag: bool) -> Result<()> {
     println!("The project has been created successfully!");
 
     if skip_flag {
-        auto_project(&project_name.to_string());
+        auto_project(project_name);
         return Ok(());
     }
 
@@ -45,7 +45,7 @@ fn catrina_new(skip_flag: bool, yarn_flag: bool) -> Result<()> {
     if r == String::from("y") {
         run_wizard(&project_name.to_string())
     } else {
-        auto_project(&project_name.to_string())
+        auto_project(project_name)
     }
 
     Ok(())
@@ -53,17 +53,11 @@ fn catrina_new(skip_flag: bool, yarn_flag: bool) -> Result<()> {
 
 /// Create a Project object based in a catrina.config.json file in current file
 fn project_from_location() -> Result<Project> {
-    let actual_path = getwd();
-    let project_name = actual_path
-        .file_name()
-        .expect("Error reading current directory ");
-    let project_name = project_name.to_str().expect("Error parsing directory name");
-
     let mut file_path = getwd();
     file_path.push(&CONFIG_FILE);
 
     let file = File::open(file_path)?;
-    let project = Project::from(file, String::from(project_name))?;
+    let project = Project::from(file)?;
     Ok(project)
 }
 

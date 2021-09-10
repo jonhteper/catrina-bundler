@@ -1,12 +1,8 @@
-use crate::catrina::js::Parser;
-use crate::catrina::lib::StdLib;
 use crate::catrina::utils::{file_to_string, getwd};
-use crate::catrina::{CONFIG_FILE, DEFAULT_PORT, VERSION_APP};
+use crate::catrina::{CONFIG_FILE, DEFAULT_PORT};
 use eyre::Result;
-use std::fs;
 use std::fs::File;
-use std::io::{BufReader, BufWriter, Read, Write};
-use std::path::{Path, PathBuf};
+use std::io::{BufWriter, Write};
 
 extern crate serde;
 extern crate serde_json;

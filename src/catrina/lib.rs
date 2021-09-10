@@ -1,18 +1,12 @@
 use crate::catrina::config::Config;
 use crate::catrina::import::Import;
-use crate::catrina::utils::{bin_dir, getwd};
-use crate::catrina::VERSION_APP;
 use eyre::Result;
-use fs_extra::dir::DirEntryAttr::Path;
-use fs_extra::error::ErrorKind::OsString;
 use std::ffi::OsStr;
 use std::fs;
-use std::fs::{create_dir, File};
+use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::Command;
-use std::ptr::replace;
-use substring::Substring;
 
 /// catrina standard library
 pub struct StdLib {
@@ -124,10 +118,6 @@ impl StdLib {
             }
         }
 
-        Ok(())
-    }
-
-    pub fn bundle_all_catrina(directory: Vec<Import>, temp_location: &mut PathBuf) -> Result<()> {
         Ok(())
     }
 } //Impl StdLib

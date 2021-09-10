@@ -38,7 +38,7 @@ impl Import {
             .replace("\"", "")
             .replace("./", "")
             .replace(";", "");
-        let mut path_buf: PathBuf;
+        let path_buf: PathBuf;
 
         if canonicalize {
             path_buf =

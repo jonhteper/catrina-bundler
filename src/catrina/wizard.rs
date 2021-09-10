@@ -7,7 +7,6 @@ pub fn run_wizard(project_name: &String) {
     const EXIT_ORDER: &str = "exit";
     let mut project = Project {
         config: standard_config(project_name),
-        name: project_name.to_string(),
     };
 
     let standard_config = standard_config(project_name);
