@@ -16,7 +16,7 @@ mod wizard;
 
 const DEFAULT_PORT: &str = ":9095";
 const CONFIG_FILE: &str = "catrina.config.json";
-pub const VERSION_APP: &str = "v0.0.2";
+pub const VERSION_APP: &str = "v0.1.0";
 const START_COMMAND: &str = "init";
 const RUN_SERVER_COMMAND: &str = "run";
 const BUILD_COMMAND: &str = "build";

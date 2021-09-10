@@ -1,11 +1,12 @@
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 
 use eyre::Result;
 
 use crate::catrina::import::Import;
-use crate::catrina::utils::write_vec_string_in_file;
+use crate::catrina::utils::{file_to_string, write_vec_string_in_file};
+use html_minifier::js::minify;
 
 const END_EXPORT: &str = "//@stop";
 
@@ -91,4 +92,19 @@ impl Parser {
 
         Ok(())
     } // print_imports method
+
+    /// minify a javascript file
+    pub fn minify_file_content(file_path: &PathBuf) -> Result<()> {
+        let mut file = File::open(file_path)?;
+        let content = file_to_string(file)?;
+
+        let minify_content = minify(&*content);
+
+        let mut file = File::create(file_path)?;
+        file.set_len(0)?;
+
+        file.write_all(minify_content.as_bytes())?;
+
+        Ok(())
+    } // minify_file_content fn
 } // Parser

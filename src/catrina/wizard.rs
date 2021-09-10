@@ -35,7 +35,7 @@ pub fn run_wizard(project_name: &String) {
         return;
     }
 
-    println!("Set path of input javascript filename:{}", EXIT_MSJ);
+    println!("Set path of input javascript file:{}", EXIT_MSJ);
     project.config.input_js = read_user_response();
     if project.config.input_js == EXIT_ORDER {
         project.config.input_js = standard_config.input_js;
@@ -43,7 +43,7 @@ pub fn run_wizard(project_name: &String) {
         return;
     }
 
-    println!("Set path of input css filename:{}", EXIT_MSJ);
+    println!("Set path of input css file:{}", EXIT_MSJ);
     project.config.input_css = read_user_response();
     if project.config.input_css == EXIT_ORDER {
         project.config.input_css = standard_config.input_css;
@@ -51,13 +51,45 @@ pub fn run_wizard(project_name: &String) {
         return;
     }
 
+    println!(
+        "Set catrina absolute location or set 'default': {}",
+        EXIT_MSJ
+    );
+    project.config.location_lib = read_user_response();
+    if project.config.location_lib == EXIT_ORDER
+        || project.config.location_lib == "default".to_string()
+    {
+        project.config.location_lib = standard_config.location_lib;
+
+        if project.config.location_lib == EXIT_ORDER {
+            project.start();
+            return;
+        }
+    }
+
+    println!("Final javascript file will be a module?:(y/n/exit)");
+    let mut bool_response = read_user_response();
+    if bool_response == EXIT_ORDER {
+        project.config.module = standard_config.module;
+        project.start();
+        return;
+    }
+    project.config.module = bool_response == "y".to_string();
+
+    println!("Will the final javascript file be minified?:(y/n/exit)");
+    let mut bool_response = read_user_response();
+    if bool_response == EXIT_ORDER {
+        project.config.minify = standard_config.minify;
+        project.start();
+        return;
+    }
+    project.config.minify = bool_response == "y".to_string();
+
     println!("Set port of trial server:{}", EXIT_MSJ);
     project.config.server_port = read_user_response();
     if project.config.server_port == EXIT_ORDER {
         project.config.server_port = standard_config.server_port;
     }
-
-    // TODO add lib location and module
 
     project.start();
 }

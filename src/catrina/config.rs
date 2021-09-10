@@ -17,6 +17,7 @@ pub struct Config {
     pub server_port: String,
     pub location_lib: String,
     pub module: bool,
+    pub minify: bool,
 }
 
 impl Config {
@@ -63,6 +64,7 @@ impl Config {
 ///     server_port: ":9095".to_string(),
 ///     location_lib: "/home/user/My-Project/node_modules/catrina".to_string(),
 ///     module: false,
+///     minify: false
 /// };
 ///
 /// assert_eq!(project.config, standard_config_example);
@@ -81,5 +83,6 @@ pub fn standard_config(project_name: &str) -> Config {
         server_port: DEFAULT_PORT.to_string(),
         location_lib: location.to_string(),
         module: false,
+        minify: false,
     }
 }

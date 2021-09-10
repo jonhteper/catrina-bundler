@@ -89,7 +89,7 @@ impl StdLib {
         Ok(result)
     }
 
-    pub fn exports_list(config: &Config) -> Result<Vec<Import>> {
+    pub fn exports_js_list(config: &Config) -> Result<Vec<Import>> {
         let exports = StdLib::exports(config)?;
         let mut exports_list: Vec<Import> = vec![];
 

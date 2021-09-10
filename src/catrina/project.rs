@@ -153,7 +153,7 @@ impl Project {
 
         let mut temp_location = env::temp_dir();
 
-        let directory = StdLib::exports_list(&self.config)?;
+        let directory = StdLib::exports_js_list(&self.config)?;
 
         StdLib::bundle_core_js(&directory, &mut temp_location)?;
 
@@ -167,6 +167,10 @@ impl Project {
         self.copy_main_content(line_start, &temp_location)?;
 
         &self.remove_js_exports(&temp_location)?;
+
+        if self.config.minify {
+            Parser::minify_file_content(&temp_location)?;
+        }
 
         fs::copy(
             &temp_location,
