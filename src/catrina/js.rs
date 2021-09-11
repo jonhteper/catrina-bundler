@@ -43,6 +43,8 @@ impl Parser {
         let mut line = String::new();
         let mut content_match: Vec<String> = vec![];
 
+        // Based in https://dev.to/dandyvica/different-ways-of-reading-files-in-rust-2n30
+        // TODO, reduce code... and set credits..
         loop {
             match content.read_line(&mut line) {
                 Ok(bytes_read) => {

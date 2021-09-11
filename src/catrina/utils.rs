@@ -47,6 +47,7 @@ pub fn random_name(len: usize) -> String {
 }
 
 /// Read a file and return lines in a Vec<String>
+/// Based in https://dev.to/dandyvica/different-ways-of-reading-files-in-rust-2n30
 pub fn file_to_vec_string(path: &PathBuf) -> Result<Vec<String>> {
     let file = File::open(path)?;
     let mut reader = BufReader::new(&file);
