@@ -122,13 +122,13 @@ pub fn conditional_write_vec_string_in_file(
 
 /// append vec string in a file, use with file_to_vec_string
 pub fn write_vec_string_in_file(file_path: &PathBuf, content: Vec<String>) -> Result<()> {
-    conditional_write_vec_string_in_file(&file_path, &content, |a, b| true)
+    conditional_write_vec_string_in_file(&file_path, &content, |_a, _b| true)
 }
 
 pub fn truncate_file(path: &PathBuf) -> Result<()> {
-    let file = File::create(&path).context(format!("Error reading file {:?}", &path))?;
+    let file = File::create(&path).wrap_err(format!("Error reading file {:?}", &path))?;
     file.set_len(0)
-        .context(format!("Error truncating file {:?}", &path))?;
+        .wrap_err(format!("Error truncating file {:?}", &path))?;
 
     Ok(())
 }
@@ -137,7 +137,7 @@ pub fn truncate_file(path: &PathBuf) -> Result<()> {
 pub fn write_vec_string_in_file_start(file_path: &PathBuf, content: Vec<String>) -> Result<()> {
     if content.len() > 0 {
         let mut new_content = content.clone();
-        let original_content = file_to_vec_string(&file_path).context(FILE_TO_VEC_ERR_MSJ)?;
+        let original_content = file_to_vec_string(&file_path).wrap_err(FILE_TO_VEC_ERR_MSJ)?;
 
         new_content.push("\n".to_string()); // add a new line to separate contents
 
@@ -145,10 +145,10 @@ pub fn write_vec_string_in_file_start(file_path: &PathBuf, content: Vec<String>)
             new_content.push(line);
         }
 
-        truncate_file(&file_path).context("Error deleting file content")?;
+        truncate_file(&file_path).wrap_err("Error deleting file content")?;
 
         write_vec_string_in_file(&file_path, new_content)
-            .context(format!("Error writing in file {:?}", &file_path))?;
+            .wrap_err(format!("Error writing in file {:?}", &file_path))?;
     }
 
     Ok(())

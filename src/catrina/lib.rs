@@ -2,7 +2,6 @@ use crate::catrina::config::Config;
 use crate::catrina::import::Import;
 use crate::catrina::utils::random_name;
 use eyre::{Result, WrapErr};
-use std::ffi::OsStr;
 use std::fs;
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
@@ -122,11 +121,11 @@ impl StdLib {
     pub fn bundle_core_css(config: &Config, temp_location: &mut PathBuf) -> Result<()> {
         temp_location.push(PathBuf::from(format!("{}.bundle.css", random_name(16))));
 
-        let _temp_file = File::create(&temp_location).context("Error creating temp file")?;
+        let _temp_file = File::create(&temp_location).wrap_err("Error creating temp file")?;
         let mut core_css_location = PathBuf::from(&config.location_lib);
         core_css_location.push("core/core.css");
 
-        fs::copy(&core_css_location, &mut *temp_location).context(format!(
+        fs::copy(&core_css_location, &mut *temp_location).wrap_err(format!(
             "Error copying {:?} to {:?}",
             &core_css_location, &temp_location
         ))?;
@@ -135,9 +134,9 @@ impl StdLib {
         let mut file = OpenOptions::new()
             .append(true)
             .open(&temp_location)
-            .context("Error opening temp file")?;
+            .wrap_err("Error opening temp file")?;
         file.write_all("\n".as_bytes())
-            .context("Error adding new line in temp file")?;
+            .wrap_err("Error adding new line in temp file")?;
 
         Ok(())
     }

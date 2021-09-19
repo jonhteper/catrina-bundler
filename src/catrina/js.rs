@@ -87,7 +87,7 @@ impl Parser {
 
     /// minify a javascript file
     pub fn minify_file_content(file_path: &PathBuf) -> Result<()> {
-        let mut file = File::open(file_path)?;
+        let file = File::open(file_path)?;
         let content = file_to_string(file)?;
 
         let minify_content = minify(&*content);

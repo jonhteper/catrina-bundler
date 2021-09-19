@@ -68,7 +68,7 @@ pub fn run_wizard(project_name: &String) {
     }
 
     println!("Final javascript file will be a module?:(y/n/exit)");
-    let mut bool_response = read_user_response();
+    let bool_response = read_user_response();
     if bool_response == EXIT_ORDER {
         project.config.module = standard_config.module;
         project.start();
@@ -77,7 +77,7 @@ pub fn run_wizard(project_name: &String) {
     project.config.module = bool_response == "y".to_string();
 
     println!("Will the final javascript file be minified?:(y/n/exit)");
-    let mut bool_response = read_user_response();
+    let bool_response = read_user_response();
     if bool_response == EXIT_ORDER {
         project.config.minify = standard_config.minify;
         project.start();

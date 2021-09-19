@@ -9,9 +9,7 @@ use crate::catrina::utils::{
 };
 use eyre::{Result, WrapErr};
 use fs_extra::dir;
-use fs_extra::error::ErrorKind::OsString;
 use html_minifier::css::minify;
-use std::ffi::OsStr;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::PathBuf;
@@ -24,8 +22,8 @@ pub struct Parser {
 
 impl Parser {
     pub fn new(config: Config) -> Result<Self> {
-        let fonts_relation =
-            Parser::read_fonts_relation(&config).context("Error reading catrina fonts relation")?;
+        let fonts_relation = Parser::read_fonts_relation(&config)
+            .wrap_err("Error reading catrina fonts relation")?;
         Ok(Parser {
             config,
             fonts_relation,
@@ -38,11 +36,11 @@ impl Parser {
         let mut fonts_relation: Vec<RelationCSSFont> = vec![];
 
         let file = File::open(&file_location)
-            .context(format!("Error reading file {:?}", &file_location))?;
+            .wrap_err(format!("Error reading file {:?}", &file_location))?;
 
-        let data = file_to_string(file).context("Error in file-to-string conversion")?;
+        let data = file_to_string(file).wrap_err("Error in file-to-string conversion")?;
 
-        fonts_relation = serde_json::from_str(&data).context("Error deserialize file data")?;
+        fonts_relation = serde_json::from_str(&data).wrap_err("Error deserialize file data")?;
 
         Ok(fonts_relation)
     }
@@ -63,7 +61,7 @@ impl Parser {
                     let mut from = Vec::new();
                     from.push(font_path);
                     fs_extra::copy_items(&from, &self.config.deploy_path, &dir::CopyOptions::new())
-                        .context(format!("Error copy {} font files", &font.name));
+                        .wrap_err(format!("Error copy {} font files", &font.name));
                 }
             } // for font
             path_buf.clear();
@@ -93,11 +91,11 @@ impl Parser {
             let import_path = import.path.to_string();
             location.push(PathBuf::from(import_path));
 
-            let mut file_content = file_to_vec_string(&location).context(FILE_TO_VEC_ERR_MSJ)?;
+            let mut file_content = file_to_vec_string(&location).wrap_err(FILE_TO_VEC_ERR_MSJ)?;
             file_content.push("\n".to_string()); // add a new line to separate files content
 
             write_vec_string_in_file(temp_file, file_content)
-                .context("Error writing vec in file")?;
+                .wrap_err("Error writing vec in file")?;
 
             location.clear();
         } // for imports
@@ -113,11 +111,15 @@ impl Parser {
             path = PathBuf::from(&self.config.location_lib);
             path.push(&raw_path);
         }
-        let origin_file_content = file_to_vec_string(&path).context(FILE_TO_VEC_ERR_MSJ)?;
+        let origin_file_content = file_to_vec_string(&path).wrap_err(FILE_TO_VEC_ERR_MSJ)?;
 
-        conditional_write_vec_string_in_file(&temp_file, &origin_file_content, |a, b| {
+        conditional_write_vec_string_in_file(&temp_file, &origin_file_content, |_a, b| {
             !b.contains("@import")
-        });
+        })
+        .wrap_err(format!(
+            "Error copying file {:?} without @imports",
+            &origin_file_content
+        ))?;
 
         Ok(())
     }
@@ -154,20 +156,19 @@ impl Parser {
 
     /// minify a css file
     pub fn minify_file_content(file_path: &PathBuf) -> Result<()> {
-        let mut file =
-            File::open(file_path).context(format!("Error open file {:?}", &file_path))?;
-        let content = file_to_string(file).context("Error in file-to-string conversion")?;
+        let file = File::open(file_path).wrap_err(format!("Error open file {:?}", &file_path))?;
+        let content = file_to_string(file).wrap_err("Error in file-to-string conversion")?;
 
         let minify_content = minify(&*content).unwrap_or("".to_string());
 
-        let mut file = File::create(&file_path).context(format!(
+        let mut file = File::create(&file_path).wrap_err(format!(
             "Error opening file {:?} in write-only mode",
             &file_path
         ))?;
-        file.set_len(0).context("Error deleting file content")?;
+        file.set_len(0).wrap_err("Error deleting file content")?;
 
         file.write_all(minify_content.as_bytes())
-            .context(format!("Error writing file {:?}", &file_path))?;
+            .wrap_err(format!("Error writing file {:?}", &file_path))?;
 
         Ok(())
     }
