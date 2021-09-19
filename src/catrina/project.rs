@@ -3,14 +3,20 @@ use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 
-use eyre::Result;
+use eyre::{Result, WrapErr};
 
 use crate::catrina::config::{standard_config, Config};
+use crate::catrina::css::Parser as Parser_css;
 use crate::catrina::import::Import;
 use crate::catrina::js::Parser;
 use crate::catrina::lib::StdLib;
-use crate::catrina::utils::{file_to_vec_string, getwd, write_vec_string_in_file};
+use crate::catrina::utils::{
+    conditional_write_vec_string_in_file, file_to_vec_string, getwd, random_name,
+    write_vec_string_in_file, write_vec_string_in_file_start, FILE_TO_VEC_ERR_MSJ,
+};
 use crate::catrina::CONFIG_FILE;
+use fs_extra::dir;
+use std::ops::Index;
 
 extern crate serde;
 extern crate serde_json;
@@ -25,22 +31,6 @@ impl Project {
     pub fn from(file: File) -> Result<Project> {
         let config = Config::from_file(file)?;
         Ok(Project { config })
-    }
-
-    fn create_environment(&self) -> Result<()> {
-        fs::create_dir_all(&self.config.deploy_path)?;
-        Project::create_input_file(&self.config.input_js)?;
-        Project::create_input_file(&self.config.input_css)?;
-        File::create(&format!(
-            "{}/{}",
-            &self.config.deploy_path, &self.config.out_js
-        ))?;
-        File::create(&format!(
-            "{}/{}",
-            &self.config.deploy_path, &self.config.out_css
-        ))?;
-
-        Ok(())
     }
 
     fn create_input_file(file: &String) -> Result<()> {
@@ -62,6 +52,30 @@ impl Project {
         Ok(())
     }
 
+    fn create_deploy_structure(&self) -> Result<()> {
+        fs::create_dir_all(&self.config.deploy_path)?;
+        File::create(&format!(
+            "{}/{}",
+            &self.config.deploy_path, &self.config.out_js
+        ))?;
+        File::create(&format!(
+            "{}/{}",
+            &self.config.deploy_path, &self.config.out_css
+        ))?;
+        Ok(())
+    }
+
+    fn create_environment(&self) -> Result<()> {
+        Project::create_input_file(&self.config.input_js)
+            .context("Error creating input js file")?;
+        Project::create_input_file(&self.config.input_css)
+            .context("Error creating input css file")?;
+        self.create_deploy_structure()
+            .context("Error creating deploy structure")?;
+
+        Ok(())
+    }
+
     fn your_file_config_content() {
         let mut data = String::new();
         let reference = File::open(CONFIG_FILE).expect("Error reading config file");
@@ -72,8 +86,9 @@ impl Project {
     }
 
     pub fn start(&self) {
-        &self.config.create_file();
-        &self.create_environment();
+        self.config.create_file();
+        self.create_environment();
+
         Project::your_file_config_content();
     }
 
@@ -95,20 +110,65 @@ impl Project {
         Ok(imports)
     } // get_imports_js method
 
-    fn copy_main_content(&self, line_start: usize, temp_file_path: &PathBuf) -> Result<()> {
-        let main_file_content = file_to_vec_string(&PathBuf::from(&self.config.input_js))?;
+    fn get_imports_css(&self, counter: &mut usize) -> Result<Vec<Import>> {
+        let mut imports: Vec<Import> = vec![];
+        let input_file = File::open(&self.config.input_css)?;
+        let reader = BufReader::new(&input_file);
+
+        for (i, file_line) in reader.lines().enumerate() {
+            let mut import_path = file_line?;
+            if import_path.contains("@import")
+                && import_path.contains("catrina/")
+                && !import_path.contains("core.css")
+            {
+                imports.push(Parser_css::extract_import(&import_path));
+                *counter = i
+            } // if
+        } //for
+
+        Ok(imports)
+    } // get_imports_css method
+
+    fn copy_all_content(
+        &self,
+        from_line_start: usize,
+        from_file_path: &PathBuf,
+        to_file_path: &PathBuf,
+    ) -> Result<()> {
+        let from_file_content = file_to_vec_string(from_file_path).context(FILE_TO_VEC_ERR_MSJ)?;
 
         let mut raw_lines: Vec<String> = vec![];
         let mut i = 0;
 
-        for line in main_file_content {
-            if i > line_start {
+        for line in from_file_content {
+            if i > from_line_start {
                 raw_lines.push(line)
             }
             i += 1;
         }
 
-        write_vec_string_in_file(temp_file_path, raw_lines)
+        write_vec_string_in_file(to_file_path, raw_lines)
+    }
+
+    fn copy_all_content_in_start(
+        &self,
+        from_line_start: usize,
+        from_file_path: &PathBuf,
+        to_file_path: &PathBuf,
+    ) -> Result<()> {
+        let from_file_content = file_to_vec_string(from_file_path).context(FILE_TO_VEC_ERR_MSJ)?;
+
+        let mut raw_lines: Vec<String> = vec![];
+        let mut i = 0;
+
+        for line in from_file_content {
+            if i > from_line_start {
+                raw_lines.push(line)
+            }
+            i += 1;
+        }
+
+        write_vec_string_in_file_start(to_file_path, raw_lines)
     }
 
     fn remove_js_exports(&self, temp_path: &PathBuf) -> Result<()> {
@@ -121,6 +181,9 @@ impl Project {
 
         if file_lines.len() > 0 {
             for line in file_lines {
+                if line.contains("import") {
+                    continue;
+                }
                 clear_lines.push(line.replace("export ", ""));
             }
 
@@ -128,6 +191,210 @@ impl Project {
             write_vec_string_in_file(temp_path, clear_lines)?;
         }
 
+        Ok(())
+    }
+
+    /// bundle js file
+    fn build_js(&self) -> Result<()> {
+        let mut temp_location = env::temp_dir();
+
+        let directory =
+            StdLib::exports_js_list(&self.config).context("Error getting exports list")?;
+
+        StdLib::bundle_core_js(&directory, &mut temp_location).with_context(|| {
+            fs::remove_file(&temp_location);
+            "Error bundle core js"
+        })?;
+
+        let mut line_start: usize = 0;
+
+        let js_imports = self.get_imports_js(&mut line_start).with_context(|| {
+            fs::remove_file(&temp_location);
+            "Error getting imports list"
+        })?;
+
+        let parser_js = Parser::new(directory);
+        parser_js
+            .print_imports(js_imports, &temp_location)
+            .with_context(|| {
+                fs::remove_file(&temp_location);
+                "Error printing imports in a temp file"
+            })?;
+
+        self.copy_all_content_in_start(
+            line_start,
+            &PathBuf::from(&self.config.input_js),
+            &temp_location,
+        )
+        .with_context(|| {
+            fs::remove_file(&temp_location);
+            "Error coping main js content in a temp file"
+        })?;
+
+        self.remove_js_exports(&temp_location).with_context(|| {
+            fs::remove_file(&temp_location);
+            "Error deleting unnecessary code"
+        })?;
+
+        if self.config.minify {
+            Parser::minify_file_content(&temp_location).with_context(|| {
+                fs::remove_file(&temp_location);
+                "Error minifying code"
+            })?;
+        }
+
+        fs::copy(
+            &temp_location,
+            format!("{}/{}", &self.config.deploy_path, &self.config.out_js),
+        )
+        .with_context(|| {
+            fs::remove_file(&temp_location);
+            "Error replacing old bundle file"
+        })?;
+
+        fs::remove_file(&temp_location).context("Error deleting js temp file")?;
+        Ok(())
+    }
+
+    /// Search imports in catrina and add necessary code
+    fn css_recursive_imports_css(
+        &self,
+        temp_path: &PathBuf,
+        imports_list: &Vec<Import>,
+        parser: &Parser_css,
+    ) -> Result<()> {
+        let file_content = file_to_vec_string(&temp_path).context(FILE_TO_VEC_ERR_MSJ)?;
+        let mut skip_lines: Vec<usize> = vec![];
+        let mut new_imports: Vec<Import> = vec![];
+        let mut next = false;
+        for (i, line) in file_content.iter().enumerate() {
+            let v = line.contains("/*Colors*/");
+            if !v && !next {
+                continue;
+            }
+            if v {
+                next = true;
+            }
+
+            if line.contains("@import") {
+                if !line.contains("core.css") {
+                    let import = Parser_css::extract_import(&line);
+                    for im in imports_list {
+                        if im.path != import.path {
+                            new_imports.push(import.clone());
+                        }
+                    } // for imports_list
+                } // if not core.css
+                skip_lines.push(i);
+            } // if contains @import
+        } // for file content
+
+        new_imports.dedup_by(|a, b| a.path.eq(&b.path));
+        //println!("skip lines {:?}", &skip_lines);
+        skip_lines.dedup();
+        //println!("skip lines dedup {:?}", &skip_lines);
+        Parser_css::write_file_exclude_lines(&skip_lines, &file_content, &temp_path)
+            .wrap_err("Error writing clear imports code")?;
+
+        for import in new_imports {
+            parser
+                .print_import_file_no_imports(&import, &temp_path)
+                .wrap_err("Error writing import file without @import lines")?;
+        }
+
+        Ok(())
+    }
+
+    /// bundle css file and copy fonts
+    fn build_css(&self) -> Result<()> {
+        let mut temp_location = env::temp_dir();
+
+        StdLib::bundle_core_css(&self.config, &mut temp_location).with_context(|| {
+            fs::remove_file(&temp_location);
+            "Error bundling core css"
+        })?;
+
+        let mut line_start: usize = 0;
+        let imports = self.get_imports_css(&mut line_start).with_context(|| {
+            fs::remove_file(&temp_location);
+            "Error getting css imports"
+        })?;
+
+        let parser_css = Parser_css::new(self.config.clone())?;
+
+        parser_css
+            .print_imports(&imports, &temp_location)
+            .with_context(|| {
+                fs::remove_file(&temp_location);
+                "Error printing css imports"
+            })?;
+
+        self.copy_all_content_in_start(
+            line_start,
+            &PathBuf::from(&self.config.input_css),
+            &temp_location,
+        )
+        .with_context(|| {
+            fs::remove_file(&temp_location);
+            "Error coping main js content in a temp file"
+        })?;
+
+        self.css_recursive_imports_css(&temp_location, &imports, &parser_css)
+            .with_context(|| {
+                fs::remove_file(&temp_location);
+                "Error with recursive catrina imports"
+            })?;
+
+        if self.config.minify {
+            Parser_css::minify_file_content(&temp_location).with_context(|| {
+                fs::remove_file(&temp_location);
+                "Error minifying code"
+            })?;
+        }
+
+        fs::copy(&temp_location, &self.config.out_css_path()).with_context(|| {
+            fs::remove_file(&temp_location);
+            "Error replacing old bundle file"
+        })?;
+
+        fs::remove_file(&temp_location).context("Error deleting css temp file")?;
+        Ok(())
+    }
+
+    fn create_backup(&self) -> Result<PathBuf> {
+        let mut deploy_location = PathBuf::from(&self.config.deploy_path.replace("./", ""));
+        if deploy_location.is_relative() {
+            let relative_path = deploy_location.clone();
+            deploy_location = getwd();
+            deploy_location.push(relative_path);
+        }
+        let random_name = random_name(15);
+        let mut location = PathBuf::from(deploy_location.clone().parent().unwrap());
+
+        location.push(format!(".{}", &random_name));
+        fs::create_dir(format!(".{}", &random_name));
+
+        fs_extra::copy_items(&vec![&deploy_location], &location, &dir::CopyOptions::new())
+            .context(format!(
+                "Error copy {:?} to {:?}",
+                deploy_location, location
+            ))?;
+        fs::remove_dir_all(&deploy_location).context("Error clearing deploy path")?;
+
+        self.create_deploy_structure()
+            .context("Error recreating deploy path")?;
+
+        Ok(PathBuf::from(location))
+    }
+
+    // TODO repair recovery
+    fn recovery_backup(&self, location: &PathBuf) -> Result<()> {
+        let from = vec![&location];
+        let to = PathBuf::from(&self.config.deploy_path);
+        fs_extra::move_items(&from, &to, &dir::CopyOptions::new()).context(format!(
+            "Error moving files from {:?} to {:?}",
+            &location, &to
+        ))?;
         Ok(())
     }
 
@@ -143,39 +410,29 @@ impl Project {
                 -- remove comments (optional)
                 -- replace old bundler for temp file ✅
             -- bundle css file
-                -- read imports
-                -- create imports list
-                -- write imports in temp file
-                -- replace old bundler for temp file
-                -- copy fonts in deploy dir
+                -- read imports ✅
+                -- create imports list✅
+                -- write imports in temp file✅
+                -- replace old bundler for temp file ✅
+                -- copy fonts in deploy dir ✅
             -- remove temp dir ✅
         */
 
-        let mut temp_location = env::temp_dir();
+        let backup_path = self.create_backup().context("Error creating backup")?;
 
-        let directory = StdLib::exports_js_list(&self.config)?;
+        self.build_js().with_context(|| {
+            self.recovery_backup(&backup_path)
+                .expect("Error in recovery");
+            "Error bundle js file"
+        })?;
 
-        StdLib::bundle_core_js(&directory, &mut temp_location)?;
+        self.build_css().with_context(|| {
+            self.recovery_backup(&backup_path)
+                .expect("Error in recovery");
+            "Error bundle css file"
+        })?;
 
-        let mut line_start: usize = 0;
-
-        let js_imports = self.get_imports_js(&mut line_start)?;
-
-        let parser_js = Parser::new(directory);
-        parser_js.print_imports(js_imports, &temp_location)?;
-
-        self.copy_main_content(line_start, &temp_location)?;
-
-        &self.remove_js_exports(&temp_location)?;
-
-        if self.config.minify {
-            Parser::minify_file_content(&temp_location)?;
-        }
-
-        fs::copy(
-            &temp_location,
-            format!("{}/{}", &self.config.deploy_path, &self.config.out_js),
-        )?;
+        fs::remove_dir_all(&backup_path).context("Error deleting recovery")?;
 
         println!("built!");
         Ok(())

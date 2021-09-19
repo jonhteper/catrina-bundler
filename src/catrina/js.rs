@@ -44,35 +44,26 @@ impl Parser {
         let mut content_match: Vec<String> = vec![];
 
         // Based in https://dev.to/dandyvica/different-ways-of-reading-files-in-rust-2n30
-        // TODO, reduce code... and set credits..
         loop {
-            match content.read_line(&mut line) {
-                Ok(bytes_read) => {
-                    // EOF: save last file address to restart from this address for next run
-                    if bytes_read == 0 {
-                        break;
-                    }
+            let bytes_read = content.read_line(&mut line)?;
+            // EOF: save last file address to restart from this address for next run
+            if bytes_read == 0 {
+                break;
+            }
 
-                    //println!("{}", line);
-                    if (line.contains(name) && line.contains("export")) || ev {
-                        //println!("{}", line_content);
-                        ev = true;
-                        if line.contains(END_EXPORT) {
-                            ev = false;
-                            line.clear();
-                            continue;
-                        }
-
-                        content_match.push(line.clone())
-                    }
-
-                    // do not accumulate data
+            if (line.contains(name) && line.contains("export")) || ev {
+                ev = true;
+                if line.contains(END_EXPORT) {
+                    ev = false;
                     line.clear();
+                    continue;
                 }
-                Err(err) => {
-                    return Err(eyre::Report::from(err));
-                }
-            };
+
+                content_match.push(line.clone())
+            }
+
+            // do not accumulate data
+            line.clear();
         } //loop
 
         Ok(content_match)
@@ -80,7 +71,6 @@ impl Parser {
 
     /// print imports in a temp file
     pub fn print_imports(&self, imports: Vec<Import>, temp_file_path: &PathBuf) -> Result<()> {
-        //println!("{:?}", &temp_file_path);
         for import in imports {
             for export in &self.directory {
                 if export.path.contains(&import.path) {

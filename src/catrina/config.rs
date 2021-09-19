@@ -3,11 +3,12 @@ use crate::catrina::{CONFIG_FILE, DEFAULT_PORT};
 use eyre::Result;
 use std::fs::File;
 use std::io::{BufWriter, Write};
+use std::path::PathBuf;
 
 extern crate serde;
 extern crate serde_json;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
     pub input_js: String,
     pub input_css: String,
@@ -35,6 +36,20 @@ impl Config {
             .write_all(data.as_bytes())
             .expect("Error writing config file");
     }
+
+    pub fn out_js_path(&self) -> PathBuf {
+        let mut path = PathBuf::from(&self.deploy_path);
+        path.push(&self.out_js);
+
+        path
+    }
+
+    pub fn out_css_path(&self) -> PathBuf {
+        let mut path = PathBuf::from(&self.deploy_path);
+        path.push(&self.out_css);
+
+        path
+    }
 }
 
 /// Create a Config object, whit pre-defined values.
@@ -58,7 +73,7 @@ impl Config {
 /// let standard_config_example = Config {
 ///     input_js: "input.js".to_string(),
 ///     input_css: "input.css".to_string(),
-///     deploy_path: "./deploy".to_string(),
+///     deploy_path: "deploy".to_string(),
 ///     out_js: "My-Project.main.js".to_string(),
 ///     out_css: "My-Project.styles.css".to_string(),
 ///     server_port: ":9095".to_string(),
@@ -77,7 +92,7 @@ pub fn standard_config(project_name: &str) -> Config {
     Config {
         input_js: "input.js".to_string(),
         input_css: "input.css".to_string(),
-        deploy_path: "./deploy".to_string(),
+        deploy_path: "deploy".to_string(),
         out_js: format!("{}.main.js", project_name),
         out_css: format!("{}.styles.css", project_name),
         server_port: DEFAULT_PORT.to_string(),

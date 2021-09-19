@@ -5,7 +5,7 @@ use substring::Substring;
 use crate::catrina::config::Config;
 
 /// Js imports and exports struct
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Import {
     pub names: Vec<String>,
     pub path: String,
