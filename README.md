@@ -27,15 +27,17 @@ The catrina's configuration is read in **catrina.config.json** file. You can set
 The file's structure is the next (this values are the _standard configuration_):
 
 ```json
+// In /home/user/My-Project
 {
   "input_js": "input.js",
   "input_css": "input.css",
   "deploy_path": "./deploy",
-  "out_js": "myProyectName.main.js",
-  "out_css": "myProyectName.styles.css",
+  "out_js": "My-Project.main.js",
+  "out_css": "My-Project.styles.css",
   "server_port": ":9095",
-  "location_lib": "node_modules/catrina",
-  "module": false
+  "location_lib": "/home/user/My-Project/node_modules/catrina",
+  "module": false,
+  "minify": false
 }
 ```
 
@@ -47,16 +49,17 @@ The file's structure is the next (this values are the _standard configuration_):
 * server_port: port where proof server will be started (command `catrina run`).
 * location_lib: the standard library location
 * module: indicates if the output file will be a module
+* minify: indicates if the output file will minified
 
-***Important***: *deploy path and input path can be the same directory, but the final files must have a different names than the inputs files.*
+***Important***: *deploy path and input path can't be the same directory.*
 
 ### Wizard
 
-This tool runs after the `new` command ─ if you don't use the` -s`─ flag, and is used to manually configure the project settings. The fields that are not explicitly modified will be taken from the standard configuration.
+This tool runs after the `init` command ─ if you don't use the `-s`─ flag, and is used to manually configure the project settings. The fields that are not explicitly modified will be taken from the standard configuration.
 
-## Build project (pending)
+## Build project
 
-Write the output files
+Write the output files, based in input files and configuration. Create a backup in command starts, and restore backup if something is wrong.
 
 ```
 $ catrina build
@@ -72,7 +75,7 @@ $ catrina run
 
 ---
 ## Compile catrina bundler
-### Using make
+### Using make (Generate `catrina`  bin)
 Prepare the environment:
 ```
 $ make prepare
@@ -82,7 +85,19 @@ Then, compile develop version
 $ make dev
 ```
 
-Or, compile release version. **Note** this command is not recommended, because this project is work in progress  
+Or, compile release version. 
 ```
 $ make
 ```
+
+### Using cargo (Generate `catrina-bundler`  bin)
+
+```
+$ make prepare
+$ cargo build --release
+$ cp target/release/catrina-bundler ./bin
+```
+
+## Installation
+
+Only manually.

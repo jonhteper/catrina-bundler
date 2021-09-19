@@ -1,18 +1,12 @@
 use crate::catrina::config::Config;
 use crate::catrina::import::Import;
-use crate::catrina::utils::{bin_dir, getwd};
-use crate::catrina::VERSION_APP;
-use eyre::Result;
-use fs_extra::dir::DirEntryAttr::Path;
-use fs_extra::error::ErrorKind::OsString;
-use std::ffi::OsStr;
+use crate::catrina::utils::random_name;
+use eyre::{Result, WrapErr};
 use std::fs;
-use std::fs::{create_dir, File};
-use std::io::{BufRead, BufReader};
+use std::fs::{File, OpenOptions};
+use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::process::Command;
-use std::ptr::replace;
-use substring::Substring;
 
 /// catrina standard library
 pub struct StdLib {
@@ -24,7 +18,7 @@ impl StdLib {
         StdLib { npm: default }
     }
 
-    ///    install catrina package from npm
+    ///    install catrina package from npm or yarn
     pub fn install(&self) -> Result<()> {
         if self.npm {
             StdLib::install_by_npm()
@@ -95,12 +89,12 @@ impl StdLib {
         Ok(result)
     }
 
-    pub fn exports_list(config: &Config) -> Result<Vec<Import>> {
+    pub fn exports_js_list(config: &Config) -> Result<Vec<Import>> {
         let exports = StdLib::exports(config)?;
         let mut exports_list: Vec<Import> = vec![];
 
         for line in exports {
-            let export = Import::new_from_line(line, config)?;
+            let export = Import::new_from_line(line, config, true)?;
             exports_list.push(export);
         } // for lines
 
@@ -110,13 +104,7 @@ impl StdLib {
     /// Copy core in a temp file whit name of temp location like this:
     /// `randomName.bundle.js`.
     pub fn bundle_core_js(directory: &Vec<Import>, temp_location: &mut PathBuf) -> Result<()> {
-        println!("{:?}", temp_location);
-        let filename = temp_location
-            .file_name()
-            .unwrap_or(OsStr::new(""))
-            .to_str()
-            .unwrap_or("");
-        temp_location.push(PathBuf::from(format!("{}.bundle.js", filename)));
+        temp_location.push(PathBuf::from(format!("{}.bundle.js", random_name(16))));
 
         let _temp_file = File::create(&temp_location)?;
         for import in directory {
@@ -128,7 +116,28 @@ impl StdLib {
         Ok(())
     }
 
-    pub fn bundle_all_catrina(directory: Vec<Import>, temp_location: &mut PathBuf) -> Result<()> {
+    /// Copy core in a temp file whit name of temp location like this:
+    /// `randomName.bundle.css`.
+    pub fn bundle_core_css(config: &Config, temp_location: &mut PathBuf) -> Result<()> {
+        temp_location.push(PathBuf::from(format!("{}.bundle.css", random_name(16))));
+
+        let _temp_file = File::create(&temp_location).wrap_err("Error creating temp file")?;
+        let mut core_css_location = PathBuf::from(&config.location_lib);
+        core_css_location.push("core/core.css");
+
+        fs::copy(&core_css_location, &mut *temp_location).wrap_err(format!(
+            "Error copying {:?} to {:?}",
+            &core_css_location, &temp_location
+        ))?;
+
+        // Patch if core.css not ends with a new line
+        let mut file = OpenOptions::new()
+            .append(true)
+            .open(&temp_location)
+            .wrap_err("Error opening temp file")?;
+        file.write_all("\n".as_bytes())
+            .wrap_err("Error adding new line in temp file")?;
+
         Ok(())
     }
 } //Impl StdLib

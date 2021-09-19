@@ -1,6 +1,6 @@
 [package]
 name = "catrina-bundler"
-version = "0.0.1"
+version = "0.1.0"
 authors = ["jonhteper <jonhteper@triamseletea.com>"]
 edition = "2018"
 
@@ -17,3 +17,4 @@ eyre = "0.6.5"
 clap = "2.33.3"
 rand = "0.8.4"
 substring = "1.4.5"
+html-minifier = "3.0.13"

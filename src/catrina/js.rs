@@ -1,67 +1,102 @@
 use std::fs::File;
-use std::io::Read;
+use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 
 use eyre::Result;
-use substring::Substring;
 
-use crate::catrina::config::Config;
-use crate::catrina::utils::file_to_string;
+use crate::catrina::import::Import;
+use crate::catrina::utils::{file_to_string, write_vec_string_in_file};
+use html_minifier::js::minify;
 
 const END_EXPORT: &str = "//@stop";
+
 pub struct Parser {
-    files: Vec<String>,
+    directory: Vec<Import>,
 }
 
 impl Parser {
-    pub fn new(files: Vec<String>) -> Parser {
-        Parser { files }
+    pub fn new(directory: Vec<Import>) -> Parser {
+        Parser { directory }
     }
 
-    fn search_in_file(names: Vec<&str>, file_path: &PathBuf) -> Result<Option<String>> {
+    /// Search functions and variables in a file
+    fn search_in_file(names: &Vec<String>, file_path: &PathBuf) -> Result<Vec<String>> {
         let file = File::open(file_path)?;
-        let data = file_to_string(file)?;
-        let mut result = String::new();
+        let mut reader = BufReader::new(&file);
+        let mut content: Vec<String> = vec![];
 
         for name in names {
-            match Parser::search_in_content(&name, &data) {
-                Some(x) => result.push_str(&x),
-                None => continue,
+            let content_match = Parser::search_name_in_content(name, &mut reader)?;
+            if content_match.len() > 0 {
+                for line in content_match {
+                    content.push(line)
+                }
             }
         }
 
-        Ok(Some(result))
+        Ok(content)
     }
 
-    fn search_in_content(name: &str, content: &String) -> Option<String> {
-        let lines = content.lines();
+    /// search a import in a file content
+    fn search_name_in_content(name: &str, content: &mut BufReader<&File>) -> Result<Vec<String>> {
         let mut ev = false;
-        let mut result = String::new();
+        let mut line = String::new();
+        let mut content_match: Vec<String> = vec![];
 
-        for line in lines {
-            let line_content = line.to_string();
-            if (line_content.contains(name) && line_content.contains("export")) || ev {
-                println!("{}", line_content);
+        // Based in https://dev.to/dandyvica/different-ways-of-reading-files-in-rust-2n30
+        loop {
+            let bytes_read = content.read_line(&mut line)?;
+            // EOF: save last file address to restart from this address for next run
+            if bytes_read == 0 {
+                break;
+            }
+
+            if (line.contains(name) && line.contains("export")) || ev {
                 ev = true;
-                if line_content.contains(END_EXPORT) {
+                if line.contains(END_EXPORT) {
                     ev = false;
+                    line.clear();
                     continue;
                 }
-                result.push_str(&line_content);
+
+                content_match.push(line.clone())
             }
-        }
 
-        Some(result)
+            // do not accumulate data
+            line.clear();
+        } //loop
+
+        Ok(content_match)
     }
 
-    pub fn get_imports_from_file(&self, name: &str) -> Result<String> {
-        // TEST... TODO read imports, create list and use Parser::search_in_file
-        let path = PathBuf::from("./lib/alerts/alert.js");
-        let names = vec!["salert"];
-        let parser_result = Parser::search_in_file(names, &path)?;
-        return match parser_result {
-            Some(x) => Ok(x),
-            None => Ok(String::from("")),
-        };
-    }
-}
+    /// print imports in a temp file
+    pub fn print_imports(&self, imports: Vec<Import>, temp_file_path: &PathBuf) -> Result<()> {
+        for import in imports {
+            for export in &self.directory {
+                if export.path.contains(&import.path) {
+                    let parser_result =
+                        Parser::search_in_file(&import.names, &PathBuf::from(&export.path))?;
+
+                    write_vec_string_in_file(temp_file_path, parser_result)?;
+                } // if contains import.path
+            } // for directory
+        } // for imports
+
+        Ok(())
+    } // print_imports method
+
+    /// minify a javascript file
+    pub fn minify_file_content(file_path: &PathBuf) -> Result<()> {
+        let file = File::open(file_path)?;
+        let content = file_to_string(file)?;
+
+        let minify_content = minify(&*content);
+
+        let mut file = File::create(file_path)?;
+        file.set_len(0)?;
+
+        file.write_all(minify_content.as_bytes())?;
+
+        Ok(())
+    } // minify_file_content fn
+} // Parser
