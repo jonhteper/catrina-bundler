@@ -92,13 +92,14 @@ impl Project {
 
     fn get_imports_js(&self, counter: &mut usize) -> Result<Vec<Import>> {
         let mut imports: Vec<Import> = vec![];
-        let input_file = File::open(&self.config.input_js).expect("No such input file");
+        let input_file = File::open(&self.config.input_js).wrap_err("No such input file")?;
         let reader = BufReader::new(&input_file);
 
         for (i, file_line) in reader.lines().enumerate() {
             let line = file_line.unwrap_or("".to_string());
             if line.contains("import") && line.contains("catrina") && !line.contains("core") {
-                let import = Import::new_from_line(line, &self.config, false)?;
+                let import = Parser::new_import_by_line(&line, &self.config, false)
+                    .wrap_err(format!("Error obtaining export in line {}", &line))?;
                 imports.push(import);
 
                 *counter = i

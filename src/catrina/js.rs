@@ -1,12 +1,14 @@
+use eyre::{ContextCompat, Result, WrapErr};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
+use substring::Substring;
 
-use eyre::Result;
-
+use crate::catrina::config::Config;
 use crate::catrina::import::Import;
 use crate::catrina::utils::{file_to_string, write_vec_string_in_file};
 use html_minifier::js::minify;
+use regex::Regex;
 
 const END_EXPORT: &str = "//@stop";
 
@@ -17,6 +19,88 @@ pub struct Parser {
 impl Parser {
     pub fn new(directory: Vec<Import>) -> Parser {
         Parser { directory }
+    }
+
+    fn obtain_names(line: &String) -> Result<Vec<String>> {
+        let mut names = vec![];
+        let names_regex = Regex::new(r"\{.+}").wrap_err("Error in regex expression")?;
+        let mut capture_names = names_regex
+            .captures(&line)
+            .wrap_err("No coincidences in line")?;
+
+        let mut names_str = capture_names
+            .get(0)
+            .wrap_err("Error getting first regex coincidence value")?
+            .as_str();
+
+        let names_list = names_str
+            .substring(1, names_str.len() - 1)
+            .split(",")
+            .collect::<Vec<&str>>();
+        for n in names_list {
+            names.push(n.trim().to_string());
+        }
+
+        Ok(names)
+    }
+
+    fn obtain_path(line: &String) -> Result<String> {
+        let mut path = String::from("");
+        let path_regex = Regex::new("\".+\"").wrap_err("Error in regex expression")?;
+        let mut capture_path = path_regex
+            .captures(&line)
+            .wrap_err("No coincidences in line")?;
+        path = capture_path
+            .get(0)
+            .wrap_err("Error getting first regex coincidence value")?
+            .as_str()
+            .to_string()
+            .replace("\"", "")
+            .replace("./", "");
+        Ok(path)
+    }
+
+    /// create a Import object from import or export javascript file line.
+    ///
+    /// # Arguments
+    ///
+    /// * `line`: file line
+    /// * `config`: Project.config object
+    /// * `canonicalize`: If this is true, the value of Import.path will be an absolute path
+    ///
+    /// returns: Result<Import, Report>
+    ///
+    /// # Examples
+    ///
+    /// ```
+    ///     let line = String::from("export {Alert, salert, another,next} from \"./alerts/alert.js\"");
+    ///
+    ///     let import_result = Parser_js::new_import_by_line(line, &standard_config(""), false)?;
+    ///     let import = Import{names:vec!["Alert", "salert", "another", "next"], path: "alerts/alert.js"};
+    ///
+    ///     assert_eq!(import_result, import);
+    /// ```
+    pub fn new_import_by_line(
+        line: &String,
+        config: &Config,
+        canonicalize: bool,
+    ) -> Result<Import> {
+        let mut import = Import::new();
+        import.names = Parser::obtain_names(&line).wrap_err("Error getting names from js line")?;
+        import.path = Parser::obtain_path(&line).wrap_err("Error getting path from js line")?;
+
+        if canonicalize {
+            let path_buf = PathBuf::from(format!("{}/{}", config.location_lib, &import.path))
+                .canonicalize()
+                .wrap_err("Error canonicalize path")?;
+
+            import.path = path_buf
+                .to_str()
+                .wrap_err("Error in to-str conversion")?
+                .to_string();
+        }
+
+        Ok(import)
     }
 
     /// Search functions and variables in a file
