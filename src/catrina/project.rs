@@ -267,7 +267,7 @@ impl Project {
         let mut next = false;
         for (i, line) in file_content.iter().enumerate() {
             let v = line.contains("/*Colors*/");
-            if !v && !&next {
+            if !v && !next {
                 continue;
             }
             if v {
