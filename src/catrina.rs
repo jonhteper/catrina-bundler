@@ -71,9 +71,15 @@ fn project_from_location() -> Result<Project> {
 }
 
 /// Create a minify copy for a css file or javascript file, this file will saved in current directory
-fn catrina_minify(filepath: &str) -> Result<()> { // TODO add final filepath in args...
+/// # Arguments
+///
+/// * `origin_path`: relative o absolute path to original file
+/// * `final_path`: destiny path for final file, can be a dir. The result name looks like this
+/// min.originalName.ext.
+/// * `delete_original: if is true, delete the original file.
+fn catrina_minify(origin_path: &str, final_path: &str, delete_original: bool) -> Result<()> {
     const BAD_EXTENSION: &str = "Only can minify css or javascript files";
-    let original_path = PathBuf::from(filepath);
+    let original_path = PathBuf::from(origin_path);
     let filename = original_path
         .file_name()
         .wrap_err("Error reading filename")?
@@ -89,8 +95,15 @@ fn catrina_minify(filepath: &str) -> Result<()> { // TODO add final filepath in 
         .wrap_err("Error reading extension")?
         .to_str()
         .wrap_err(ERROR_TO_STRING_MSJ)?;
-    let mut new_path = getwd();
-    new_path.push(format!("min.{}", filename));
+
+    let mut new_path = PathBuf::from(&final_path);
+    if final_path == "" {
+        new_path = getwd();
+    }
+
+    if new_path.is_dir() {
+        new_path.push(format!("min.{}", filename));
+    }
 
     fs::copy(&original_path, &new_path).wrap_err(format!(
         "Error copy {:?} to {:?}",
@@ -112,11 +125,18 @@ fn catrina_minify(filepath: &str) -> Result<()> { // TODO add final filepath in 
         }
     };
 
+    if delete_original {
+        fs::remove_file(&original_path).wrap_err("Error deleting original file")?;
+    }
+
     println!("File minified saved in: {:?}", &new_path);
     Ok(())
 }
 
 /// Get two filepath, combine this files and save in a location. Optional minify.
+/// # Caution
+/// If the final file exists, and the flag -m is active, this file will be deleting and a minified
+/// file replace it
 fn catrina_combine(args: &CatrinaArgs) -> Result<()> {
     let first_file = PathBuf::from(&args.filepath_1);
     let second_file = PathBuf::from(&args.filepath_2);
@@ -141,10 +161,14 @@ fn catrina_combine(args: &CatrinaArgs) -> Result<()> {
         )
     });
 
-    // TODO repair flag error...
     if args.minify {
         let file_location = final_file.to_str().wrap_err(ERROR_TO_STRING_MSJ)?;
-        catrina_minify(file_location)
+        let file_parent = final_file
+            .parent()
+            .wrap_err("Error reading parent")?
+            .to_str()
+            .wrap_err(ERROR_TO_STRING_MSJ)?;
+        catrina_minify(&file_location, &file_parent, true)
             .wrap_err(format!("Error minifying file {:?}", &final_file))?;
     }
 
@@ -166,7 +190,8 @@ pub fn catrina_tool(args: CatrinaArgs) -> Result<()> {
             catrina_new(args.skip, args.yarn).wrap_err("Error creating a new project structure")?
         }
         &BUILD_COMMAND => catrina_build().wrap_err("Error bundling project")?,
-        &MINIFY_COMMAND => catrina_minify(args.filepath_1).wrap_err("Error minifying file")?,
+        &MINIFY_COMMAND => catrina_minify(args.filepath_1, args.filepath_2, false)
+            .wrap_err("Error minifying file")?,
         &COMBINE_COMMAND => catrina_combine(&args).wrap_err("Error in file combination")?,
         _ => {
             println!(

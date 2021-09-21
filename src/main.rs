@@ -16,12 +16,12 @@ fn main() {
         .about("A mini bundler for npm catrina package")
         .arg(
             Arg::with_name("ACTION")
-                .help("The principal order by Catrina, you can use \"init\", \"build\", \"minify\" or \"bundle\"")
+                .help("The principal order by Catrina, you can use \"init\", \"build\", \"minify\" or \"combine\"")
                 .required(true)
                 .index(1),
         )
         .arg(Arg::with_name("PATH").help("Filepath for \"minify\" command or \"combine\" command").index(2))
-        .arg(Arg::with_name("PATH2").help("Filepath for second file in \"combine\" command").index(3))
+        .arg(Arg::with_name("PATH2").help("Filepath for second file in \"combine\" command or final path for \"minify\" command").index(3))
         .arg(Arg::with_name("NAME").help("Filepath final file in \"combine\" command").index(4))
         .arg(
             Arg::with_name("skip")
