@@ -1,33 +1,44 @@
 # catrina-bundler
-A mini-bundler for [catrina](https://github.com/PROMUEVETE-QUERETARO/catrina)
 
-## Start project
+A mini-bundler for [catrina](https://github.com/PROMUEVETE-QUERETARO/catrina), and files minimizer.
+
+## Dependencies
+
+* **npm** version 7.0+ *(required)*
+* **yarn** version 2+ *(optional)*
+
+## Commands
+
+### Start project
+
+First create a new directory, for example: 
+
+````
+mkdir My-Project
+````
+
+Then, run command:
 
 ```
-$ catrina init
+catrina init
 ```
 
 This command create a project with actual directory name, and install catrina package whit npm or yarn. Then the tool will question you if you wish to start the wizard; if you input "n", the new project will have the standard configuration.
 
-```
-$ catrina init -Y
-```
+#### Use yarn
+
 With the `-Y` flag to use 'yarn' in the project.
 
 ```
-$ catrina init -s
+catrina init -Y
 ```
-
-With the `-s` flag you create a new project with the standard configuration.
-
-### Configuration
+#### Configuration
 
 The catrina's configuration is read in **catrina.config.json** file. You can set this configuration using the wizard setup was run after `catrina init` command or make yourself the file.
 
-The file's structure is the next (this values are the _standard configuration_):
+The file's structure is the next (this values are the _standard configuration_) in `/home/user/My-Project` location:
 
 ```json
-// In /home/user/My-Project
 {
   "input_js": "input.js",
   "input_css": "input.css",
@@ -53,49 +64,158 @@ The file's structure is the next (this values are the _standard configuration_):
 
 ***Important***: *deploy path and input path can't be the same directory.*
 
-### Wizard
+#### Wizard
 
-This tool runs after the `init` command ─ if you don't use the `-s`─ flag, and is used to manually configure the project settings. The fields that are not explicitly modified will be taken from the standard configuration.
+This tool runs after the `init` command, and is used to manually configure the project settings. The fields that are not explicitly modified will be taken from the standard configuration.
 
-## Build project
-
-Write the output files, based in input files and configuration. Create a backup in command starts, and restore backup if something is wrong.
+With the `-s` flag you create a new project with the standard configuration.
 
 ```
-$ catrina build
+catrina init -s
 ```
 
-## Start server (pending)
-
-Run a proof server in deploy path defined in configuration file.
+### Build project
 
 ```
-$ catrina run
+catrina build
 ```
+
+This command reading a configuration file, then create a backup of deploy directory, this backup will restored if  something is wrong. Next, bundle the javascript and css input files. 
+
+***Note***: *Run this command in project root*.
+
+#### javascript
+
+The imports is read, if the imports is in catrina package, this code ─ and internal dependencies─ is copied in the end the input file content; if imports isn't in catrina package this lines will continued in document start, except if configuration variable `module` is `false`.
+
+Is important sort imports manually. For example, the following code does not work as expected:
+
+```javascript
+import {notify} from "catrina/notifications/notification.js";
+import {parsePrice} from "utils/numbers.js";
+import {salert, Alert} from "catrina/alerts/alert.js";
+```
+
+Sort catrina imports in top:
+
+```javascript
+import {notify} from "catrina/notifications/notification.js";
+import {salert, Alert} from "catrina/alerts/alert.js";
+import {parsePrice} from "utils/numbers.js";
+```
+
+
+
+#### css
+
+Same as in the previous step: the imports is read, if the imports is in catrina package, this code  is copied in the end the input file content; if imports isn't in catrina package this lines will continued in document start. If imports a font included in catrina package, the font's files will be copied into deploy folder.
+
+**Remember**: sort catrina imports in top:
+
+```css
+@import "node_modules/catrina/notifications/notifications.css";
+@import "node_modules/catrina/forms/rounded-forms.css";
+@import url("https://example.com/path/min.css");
+```
+
+Finally, if catrina's configurations variable `minify` is `true`, the final files will be minified.
+
+### Minify files
+
+You can minify javascript or css files with the next command. 
+
+```
+catrina minify path/to/file destiny/path
+```
+
+For example, if you have a file *styles.css*, and you can save the minified file in current path, run the next command:
+
+```
+catrina minify styles.css
+```
+
+Then, you have *styles.css* and *min.styles.css* in the current path.
+
+You can set the path and name of minified file, like this:
+
+```
+catrina minify styles.css ~/Desktop/main.css
+```
+
+For security, the original file not edited.
+
+### Combine files
+
+If you can combine two files, run the next command
+
+```
+catrina combine path/to/file1 path/to/file2 path/to/result/file
+```
+
+Example: 
+
+```
+catrina combine notes.txt notes_2.txt ~/Documents/notes.txt
+```
+
+You can minify compatible files after combination:
+
+```
+catrina combine -m static/footer.css static/main.css static/styles.min.css
+```
+
+***Warning***: If the final file exists, and the flag `-m` is active, this file will be deleting and a minified file replace it
+
+Example:
+
+```
+[path]$ ls
+input.css  main.css
+
+[path]$ catrina -m combine input.css main.css main.css
+File minified saved in: "path/min.main.css"
+Files combined! Result file saved in "main.css"
+No errors
+
+[path]$ ls
+input.css  min.main.css
+```
+
+***Remember**: You can only minify javascript or css files.*
 
 ---
 ## Compile catrina bundler
+
+### Dependencies
+
+* make
+* cargo
+
 ### Using make (Generate `catrina`  bin)
+
 Prepare the environment:
 ```
-$ make prepare
+make prepare
 ```
-Then, compile develop version
-```
-$ make dev
-```
+This command creates a directory named *bin*, after deleting the old directory named *bin* (if it exists), then copies the LICENSE and README files to the folder.
 
-Or, compile release version. 
-```
-$ make
-```
-
-### Using cargo (Generate `catrina-bundler`  bin)
+Then, compile develop version:
 
 ```
-$ make prepare
-$ cargo build --release
-$ cp target/release/catrina-bundler ./bin
+make dev
+```
+
+Or, compile release version:
+```
+make tool
+```
+
+### Using cargo
+
+```
+make prepare
+cargo build --release
+cp target/release/catrina-bundler ./bin/catrina
 ```
 
 ## Installation
