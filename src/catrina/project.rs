@@ -201,14 +201,14 @@ impl Project {
             StdLib::exports_js_list(&self.config).wrap_err("Error getting exports list")?;
 
         StdLib::bundle_core_js(&directory, &mut temp_location).wrap_err_with(|| {
-            fs::remove_file(&temp_location);
+            fs::remove_file(&temp_location).expect("Error deleting temporal file");
             "Error bundle core js"
         })?;
 
         let mut line_start: usize = 0;
 
         let js_imports = self.get_imports_js(&mut line_start).wrap_err_with(|| {
-            fs::remove_file(&temp_location);
+            fs::remove_file(&temp_location).expect("Error deleting temporal file");
             "Error getting imports list"
         })?;
 
@@ -216,7 +216,7 @@ impl Project {
         parser_js
             .print_imports(js_imports, &temp_location)
             .wrap_err_with(|| {
-                fs::remove_file(&temp_location);
+                fs::remove_file(&temp_location).expect("Error deleting temporal file");
                 "Error printing imports in a temp file"
             })?;
 
@@ -226,18 +226,18 @@ impl Project {
             &temp_location,
         )
         .wrap_err_with(|| {
-            fs::remove_file(&temp_location);
+            fs::remove_file(&temp_location).expect("Error deleting temporal file");
             "Error coping main js content in a temp file"
         })?;
 
         self.remove_js_exports(&temp_location).wrap_err_with(|| {
-            fs::remove_file(&temp_location);
+            fs::remove_file(&temp_location).expect("Error deleting temporal file");
             "Error deleting unnecessary code"
         })?;
 
         if self.config.minify {
             Parser::minify_file_content(&temp_location).wrap_err_with(|| {
-                fs::remove_file(&temp_location);
+                fs::remove_file(&temp_location).expect("Error deleting temporal file");
                 "Error minifying code"
             })?;
         }
@@ -247,7 +247,7 @@ impl Project {
             format!("{}/{}", &self.config.deploy_path, &self.config.out_js),
         )
         .wrap_err_with(|| {
-            fs::remove_file(&temp_location);
+            fs::remove_file(&temp_location).expect("Error deleting temporal file");
             "Error replacing old bundle file"
         })?;
 
@@ -289,9 +289,8 @@ impl Project {
         } // for file content
 
         new_imports.dedup_by(|a, b| a.path.eq(&b.path));
-        //println!("skip lines {:?}", &skip_lines);
         skip_lines.dedup();
-        //println!("skip lines dedup {:?}", &skip_lines);
+
         Parser_css::write_file_exclude_lines(&skip_lines, &file_content, &temp_path)
             .wrap_err("Error writing clear imports code")?;
 
@@ -309,13 +308,13 @@ impl Project {
         let mut temp_location = env::temp_dir();
 
         StdLib::bundle_core_css(&self.config, &mut temp_location).wrap_err_with(|| {
-            fs::remove_file(&temp_location);
+            fs::remove_file(&temp_location).expect("Error deleting temporal file");
             "Error bundling core css"
         })?;
 
         let mut line_start: usize = 0;
         let imports = self.get_imports_css(&mut line_start).wrap_err_with(|| {
-            fs::remove_file(&temp_location);
+            fs::remove_file(&temp_location).expect("Error deleting temporal file");
             "Error getting css imports"
         })?;
 
@@ -324,7 +323,7 @@ impl Project {
         parser_css
             .print_imports(&imports, &temp_location)
             .wrap_err_with(|| {
-                fs::remove_file(&temp_location);
+                fs::remove_file(&temp_location).expect("Error deleting temporal file");
                 "Error printing css imports"
             })?;
 
@@ -334,25 +333,25 @@ impl Project {
             &temp_location,
         )
         .wrap_err_with(|| {
-            fs::remove_file(&temp_location);
+            fs::remove_file(&temp_location).expect("Error deleting temporal file");
             "Error coping main js content in a temp file"
         })?;
 
         self.css_recursive_imports_css(&temp_location, &imports, &parser_css)
             .wrap_err_with(|| {
-                fs::remove_file(&temp_location);
+                fs::remove_file(&temp_location).expect("Error deleting temporal file");
                 "Error with recursive catrina imports"
             })?;
 
         if self.config.minify {
             Parser_css::minify_file_content(&temp_location).wrap_err_with(|| {
-                fs::remove_file(&temp_location);
+                fs::remove_file(&temp_location).expect("Error deleting temporal file");
                 "Error minifying code"
             })?;
         }
 
         fs::copy(&temp_location, &self.config.out_css_path()).wrap_err_with(|| {
-            fs::remove_file(&temp_location);
+            fs::remove_file(&temp_location).expect("Error deleting temporal file");
             "Error replacing old bundle file"
         })?;
 

@@ -18,13 +18,6 @@ pub fn read_user_response() -> String {
     user_response.trim().to_string()
 }
 
-/// Return the binary directory.
-pub fn bin_dir() -> PathBuf {
-    let bin = env::current_exe().expect("Error reading binary path");
-    let dir = bin.parent().unwrap();
-    PathBuf::from(dir)
-}
-
 /// Return the current directory
 pub fn getwd() -> PathBuf {
     env::current_dir().expect("Error reading execution path ")

@@ -1,5 +1,4 @@
 use crate::args::CatrinaArgs;
-use crate::catrina::config::standard_config;
 use crate::catrina::css::Parser as Parser_css;
 use crate::catrina::js::Parser as Parser_js;
 use crate::catrina::lib::StdLib;
@@ -160,7 +159,7 @@ fn catrina_combine(args: &CatrinaArgs) -> Result<()> {
             "Error adding file content from {:?} to {:?}. Final file deleted.",
             &second_file, &final_file
         )
-    });
+    })?;
 
     if args.minify {
         let file_location = final_file.to_str().wrap_err(ERROR_TO_STRING_MSJ)?;

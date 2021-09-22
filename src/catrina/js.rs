@@ -24,11 +24,11 @@ impl Parser {
     fn obtain_names(line: &String) -> Result<Vec<String>> {
         let mut names = vec![];
         let names_regex = Regex::new(r"\{.+}").wrap_err("Error in regex expression")?;
-        let mut capture_names = names_regex
+        let capture_names = names_regex
             .captures(&line)
             .wrap_err("No coincidences in line")?;
 
-        let mut names_str = capture_names
+        let names_str = capture_names
             .get(0)
             .wrap_err("Error getting first regex coincidence value")?
             .as_str();
@@ -45,12 +45,11 @@ impl Parser {
     }
 
     fn obtain_path(line: &String) -> Result<String> {
-        let mut path = String::from("");
         let path_regex = Regex::new("\".+\"").wrap_err("Error in regex expression")?;
-        let mut capture_path = path_regex
+        let capture_path = path_regex
             .captures(&line)
             .wrap_err("No coincidences in line")?;
-        path = capture_path
+        let path = capture_path
             .get(0)
             .wrap_err("Error getting first regex coincidence value")?
             .as_str()
