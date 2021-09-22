@@ -1,15 +1,15 @@
-all: prepare format tool
+all: prepare tool
 
 prepare:
 	rm -r ./bin || true
 	mkdir ./bin
 	cp LICENSE ./bin
 	cp README.md ./bin
-format:
+tool:
 	cargo fmt
-tool: format
-	cd src && cargo build --release
+	cargo build --release
 	cp target/release/catrina-bundler ./bin/catrina
-dev: format
+dev:
+	cargo fmt
 	cd src && cargo build
 	cp target/debug/catrina-bundler ./bin/catrina
