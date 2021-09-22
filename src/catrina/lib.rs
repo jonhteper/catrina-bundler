@@ -1,5 +1,6 @@
 use crate::catrina::config::Config;
 use crate::catrina::import::Import;
+use crate::catrina::js::Parser;
 use crate::catrina::utils::random_name;
 use eyre::{Result, WrapErr};
 use std::fs;
@@ -94,7 +95,8 @@ impl StdLib {
         let mut exports_list: Vec<Import> = vec![];
 
         for line in exports {
-            let export = Import::new_from_line(line, config, true)?;
+            let export = Parser::new_import_by_line(&line, config, true)
+                .wrap_err(format!("Error obtaining export in line {}", &line))?;
             exports_list.push(export);
         } // for lines
 

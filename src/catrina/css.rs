@@ -33,14 +33,13 @@ impl Parser {
     fn read_fonts_relation(config: &Config) -> Result<Vec<RelationCSSFont>> {
         let mut file_location = PathBuf::from(&config.location_lib);
         file_location.push("css-fonts-relation.json");
-        let mut fonts_relation: Vec<RelationCSSFont> = vec![];
 
         let file = File::open(&file_location)
             .wrap_err(format!("Error reading file {:?}", &file_location))?;
 
         let data = file_to_string(file).wrap_err("Error in file-to-string conversion")?;
 
-        fonts_relation = serde_json::from_str(&data).wrap_err("Error deserialize file data")?;
+        let fonts_relation = serde_json::from_str(&data).wrap_err("Error deserialize file data")?;
 
         Ok(fonts_relation)
     }
@@ -61,7 +60,7 @@ impl Parser {
                     let mut from = Vec::new();
                     from.push(font_path);
                     fs_extra::copy_items(&from, &self.config.deploy_path, &dir::CopyOptions::new())
-                        .wrap_err(format!("Error copy {} font files", &font.name));
+                        .wrap_err(format!("Error copy {} font files", &font.name))?;
                 }
             } // for font
             path_buf.clear();
@@ -85,9 +84,8 @@ impl Parser {
     }
 
     pub fn print_imports(&self, imports: &Vec<Import>, temp_file: &PathBuf) -> Result<()> {
-        let mut location = PathBuf::new();
+        let mut location = PathBuf::from(getwd());
         for import in imports {
-            location = PathBuf::from(getwd());
             let import_path = import.path.to_string();
             location.push(PathBuf::from(import_path));
 
@@ -105,9 +103,8 @@ impl Parser {
 
     pub fn print_import_file_no_imports(&self, import: &Import, temp_file: &PathBuf) -> Result<()> {
         let mut path = PathBuf::from("");
-        let mut raw_path = import.path.clone();
         if import.path.contains("../") {
-            raw_path = import.path.replace("../", "");
+            let raw_path = import.path.replace("../", "");
             path = PathBuf::from(&self.config.location_lib);
             path.push(&raw_path);
         }
