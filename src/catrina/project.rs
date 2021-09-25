@@ -74,20 +74,26 @@ impl Project {
         Ok(())
     }
 
-    fn your_file_config_content() {
+    fn your_file_config_content() -> Result<()> {
         let mut data = String::new();
-        let reference = File::open(CONFIG_FILE).expect("Error reading config file");
+        let reference = File::open(CONFIG_FILE).wrap_err("Error reading config file")?;
         let mut br = BufReader::new(reference);
-        br.read_to_string(&mut data).expect("Error parsing data");
+        br.read_to_string(&mut data)
+            .wrap_err("Error parsing data")?;
         println!("\nYour project configuration:\n{}", data);
         println!("You can edit this configuration in file {}", CONFIG_FILE);
+        Ok(())
     }
 
-    pub fn start(&self) {
-        self.config.create_file();
-        self.create_environment();
+    pub fn start(&self) -> Result<()> {
+        self.config
+            .create_file()
+            .wrap_err("Error creating config file")?;
+        self.create_environment()
+            .wrap_err("Error creating project structure")?;
 
-        Project::your_file_config_content();
+        Project::your_file_config_content().wrap_err("Error in final ")?;
+        Ok(())
     }
 
     fn get_imports_js(&self, counter: &mut usize) -> Result<Vec<Import>> {
@@ -350,7 +356,7 @@ impl Project {
             })?;
         }
 
-        fs::copy(&temp_location, &self.config.out_css_path()).wrap_err_with(|| {
+        fs::copy(&temp_location, &self.config.out_css_path_buf()).wrap_err_with(|| {
             fs::remove_file(&temp_location).expect("Error deleting temporal file");
             "Error replacing old bundle file"
         })?;
@@ -417,10 +423,12 @@ impl Project {
     } // build method
 }
 
-pub fn auto_project(project_name: &str) {
+pub fn auto_project(project_name: &str) -> Result<()> {
     let project = Project {
         config: standard_config(project_name),
     };
 
-    project.start();
+    project.start().wrap_err("Error starting project")?;
+
+    Ok(())
 }

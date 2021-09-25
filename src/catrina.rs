@@ -43,7 +43,7 @@ fn catrina_new(skip_flag: bool, yarn_flag: bool) -> Result<()> {
     println!("The project has been created successfully!");
 
     if skip_flag {
-        auto_project(project_name);
+        auto_project(project_name).wrap_err("Error initializing default project")?;
         return Ok(());
     }
 
@@ -51,9 +51,9 @@ fn catrina_new(skip_flag: bool, yarn_flag: bool) -> Result<()> {
 
     let r = read_user_response();
     if r == String::from("y") {
-        run_wizard(&project_name.to_string())
+        run_wizard(&project_name.to_string()).wrap_err("Error running wizard")?;
     } else {
-        auto_project(project_name)
+        auto_project(project_name).wrap_err("Error initializing default project")?;
     }
 
     Ok(())
