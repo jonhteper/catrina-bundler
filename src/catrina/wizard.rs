@@ -85,11 +85,5 @@ pub fn run_wizard(project_name: &String) {
     }
     project.config.minify = bool_response == "y".to_string();
 
-    println!("Set port of trial server:{}", EXIT_MSJ);
-    project.config.server_port = read_user_response();
-    if project.config.server_port == EXIT_ORDER {
-        project.config.server_port = standard_config.server_port;
-    }
-
     project.start();
 }
