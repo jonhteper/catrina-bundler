@@ -14,12 +14,11 @@ const END_EXPORT: &str = "//@stop";
 
 pub struct Parser {
     directory: Vec<Import>,
-    config: Config,
 }
 
 impl Parser {
-    pub fn new(directory: Vec<Import>, config: Config) -> Parser {
-        Parser { directory, config }
+    pub fn new(directory: Vec<Import>) -> Parser {
+        Parser { directory }
     }
 
     pub fn obtain_names(line: &String) -> Result<Vec<String>> {
@@ -109,14 +108,12 @@ impl Parser {
         let mut reader = BufReader::new(&file);
         let mut content: Vec<String> = vec![];
 
-        //for name in names {
         let content_match = Parser::search_name_in_content(name, &mut reader)?;
         if content_match.len() > 0 {
             for line in content_match {
                 content.push(line)
             }
         }
-        //}
 
         Ok(content)
     }
@@ -167,7 +164,7 @@ impl Parser {
 
     fn recursive_imports(&self, imports_list: &Import) -> Result<Import> {
         let mut imports = imports_list.clone();
-        let mut names = vec![];
+        let mut names: Vec<String>;
 
         for n in &imports_list.names {
             let name = n.clone();
@@ -199,7 +196,6 @@ impl Parser {
 
     /// print imports in a temp file
     pub fn print_imports(&self, imports: Import, temp_file_path: &PathBuf) -> Result<()> {
-        // TODO print recursive imports
         let imports = self
             .recursive_imports(&imports)
             .wrap_err("Error obtaining internal dependencies")?;
@@ -208,13 +204,9 @@ impl Parser {
                 .search_path_in_directory(&name)
                 .wrap_err("Import isn't in Catrina")?;
 
-            //for export in &self.directory {
-            //  if export.path.contains(&import.path) {
             let parser_result = self.search_in_file(&name, &path)?;
 
             write_vec_string_in_file(temp_file_path, parser_result)?;
-            //} // if contains import.path
-            //} // for directory
         } // for names
 
         Ok(())

@@ -11,7 +11,7 @@ use crate::catrina::import::Import;
 use crate::catrina::js::Parser;
 use crate::catrina::lib::StdLib;
 use crate::catrina::utils::{
-    file_to_vec_string, getwd, random_name, write_vec_string_in_file,
+    file_to_vec_string, getwd, random_name, truncate_file, write_vec_string_in_file,
     write_vec_string_in_file_start, FILE_TO_VEC_ERR_MSJ,
 };
 use crate::catrina::CONFIG_FILE;
@@ -201,6 +201,32 @@ impl Project {
         Ok(())
     }
 
+    fn imports_to_top(temp_path: &PathBuf, pattern: String) -> Result<()> {
+        let mut file_content =
+            file_to_vec_string(&temp_path).wrap_err("Error in file-to-vec conversion")?;
+        let mut imports = vec![];
+
+        for (i, line) in file_content.clone().iter().enumerate() {
+            if line.contains(&pattern) {
+                imports.push(line.clone());
+                file_content[i] = "".to_string();
+            }
+        }
+
+        if imports.len() > 0 {
+            imports.push("\n".to_string());
+        }
+
+        truncate_file(&temp_path).wrap_err("Error deleting file content")?;
+
+        write_vec_string_in_file(&temp_path, imports).wrap_err("Error writing imports")?;
+
+        write_vec_string_in_file(&temp_path, file_content)
+            .wrap_err("Error printing file content")?;
+
+        Ok(())
+    }
+
     /// bundle js file
     fn build_js(&self) -> Result<()> {
         let mut temp_location = env::temp_dir();
@@ -220,7 +246,7 @@ impl Project {
             "Error getting imports list"
         })?;
 
-        let parser_js = Parser::new(directory, self.config.clone());
+        let parser_js = Parser::new(directory);
         parser_js
             .print_imports(js_imports, &temp_location)
             .wrap_err_with(|| {
@@ -237,6 +263,9 @@ impl Project {
             fs::remove_file(&temp_location).expect("Error deleting temporal file");
             "Error coping main js content in a temp file"
         })?;
+
+        Project::imports_to_top(&temp_location, "import ".to_string())
+            .wrap_err("Error moving imports sentences to top")?;
 
         self.remove_js_exports(&temp_location).wrap_err_with(|| {
             fs::remove_file(&temp_location).expect("Error deleting temporal file");
@@ -309,6 +338,9 @@ impl Project {
                 "Error minifying code"
             })?;
         }
+
+        Project::imports_to_top(&temp_location, "@import".to_string())
+            .wrap_err("Error moving imports sentences to top")?;
 
         fs::copy(&temp_location, &self.config.out_css_path_buf()).wrap_err_with(|| {
             fs::remove_file(&temp_location).expect("Error deleting temporal file");
