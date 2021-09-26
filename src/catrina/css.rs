@@ -3,11 +3,13 @@ extern crate serde_json;
 
 use crate::catrina::config::Config;
 use crate::catrina::import::Import;
+use crate::catrina::js::Parser as Parser_js;
 use crate::catrina::utils::{
     conditional_write_vec_string_in_file, file_to_string, file_to_vec_string, getwd, truncate_file,
     write_vec_string_in_file, FILE_TO_VEC_ERR_MSJ,
 };
-use eyre::{Result, WrapErr};
+use crate::catrina::{ERROR_TO_STRING_MSJ, ERROR_TO_STR_MSJ};
+use eyre::{ContextCompat, Result, WrapErr};
 use fs_extra::dir;
 use html_minifier::css::minify;
 use std::fs::{File, OpenOptions};
@@ -50,17 +52,17 @@ impl Parser {
             path_buf = PathBuf::from(&import.path);
             let path = path_buf
                 .file_name()
-                .unwrap_or_default()
+                .context("Error obtaining filename")?
                 .to_str()
-                .unwrap_or_default();
-            for font in &self.fonts_relation {
+                .context(ERROR_TO_STR_MSJ)?;
+            for f in &self.fonts_relation {
+                let mut font = f.clone();
                 if font.name == path.to_string() {
                     let mut font_path = PathBuf::from(&self.config.location_lib);
                     font_path.push(PathBuf::from(font.path.clone().replace("./lib/", "")));
-                    let mut from = Vec::new();
-                    from.push(font_path);
-                    fs_extra::copy_items(&from, &self.config.deploy_path, &dir::CopyOptions::new())
-                        .wrap_err(format!("Error copy {} font files", &font.name))?;
+                    font.path = font_path.to_str().context(ERROR_TO_STR_MSJ)?.to_string();
+                    font.get_font(&self.config)
+                        .wrap_err("Error obtaining font files")?;
                 }
             } // for font
             path_buf.clear();
@@ -76,13 +78,57 @@ impl Parser {
             .replace(";", "")
             .replace("\"", "")
             .replace("\n", "");
-
         Import {
             names: vec![],
             path: l,
         }
     }
 
+    /// Search imports in catrina and add necessary code
+    pub(crate) fn recursive_imports(
+        &self,
+        temp_path: &PathBuf,
+        imports_list: &Vec<Import>,
+    ) -> Result<()> {
+        let file_content = file_to_vec_string(&temp_path).wrap_err(FILE_TO_VEC_ERR_MSJ)?;
+        let mut skip_lines: Vec<usize> = vec![];
+        let mut new_imports: Vec<Import> = vec![];
+        let mut next = false;
+        for (i, line) in file_content.iter().enumerate() {
+            let v = line.contains("/*Colors*/");
+            if !v && !next {
+                continue;
+            }
+            if v {
+                next = true;
+            }
+
+            if line.contains("@import") {
+                if !line.contains("core.css") {
+                    let import = Parser::extract_import(&line);
+                    for im in imports_list {
+                        if im.path != import.path {
+                            new_imports.push(import.clone());
+                        }
+                    } // for imports_list
+                } // if not core.css
+                skip_lines.push(i);
+            } // if contains @import
+        } // for file content
+
+        new_imports.dedup_by(|a, b| a.path.eq(&b.path));
+        skip_lines.dedup();
+
+        Parser::write_file_exclude_lines(&skip_lines, &file_content, &temp_path)
+            .wrap_err("Error writing clear imports code")?;
+
+        for import in new_imports {
+            self.print_import_file_no_imports(&import, &temp_path)
+                .wrap_err("Error writing import file without @import lines")?;
+        }
+
+        Ok(())
+    }
     pub fn print_imports(&self, imports: &Vec<Import>, temp_file: &PathBuf) -> Result<()> {
         let mut location = PathBuf::from(getwd());
         for import in imports {
@@ -171,7 +217,7 @@ impl Parser {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RelationCSSFont {
     pub name: String,
     pub path: String,
@@ -179,11 +225,14 @@ pub struct RelationCSSFont {
 
 impl RelationCSSFont {
     pub fn get_font(&self, config: &Config) -> Result<()> {
-        let options = dir::CopyOptions::new();
         let mut from_paths = Vec::new();
         from_paths.push(&self.path);
-
-        fs_extra::copy_items(&from_paths, &config.deploy_path, &options)?;
+        fs_extra::copy_items(&from_paths, &config.deploy_path, &dir::CopyOptions::new()).wrap_err(
+            format!(
+                "Error copy files {:?} to {}",
+                &from_paths, &config.deploy_path
+            ),
+        )?;
 
         Ok(())
     }

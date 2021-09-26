@@ -6,7 +6,7 @@ use substring::Substring;
 
 use crate::catrina::config::Config;
 use crate::catrina::import::Import;
-use crate::catrina::utils::{file_to_string, write_vec_string_in_file};
+use crate::catrina::utils::{file_to_string, file_to_vec_string, write_vec_string_in_file};
 use html_minifier::js::minify;
 use regex::Regex;
 
@@ -14,14 +14,15 @@ const END_EXPORT: &str = "//@stop";
 
 pub struct Parser {
     directory: Vec<Import>,
+    config: Config,
 }
 
 impl Parser {
-    pub fn new(directory: Vec<Import>) -> Parser {
-        Parser { directory }
+    pub fn new(directory: Vec<Import>, config: Config) -> Parser {
+        Parser { directory, config }
     }
 
-    fn obtain_names(line: &String) -> Result<Vec<String>> {
+    pub fn obtain_names(line: &String) -> Result<Vec<String>> {
         let mut names = vec![];
         let names_regex = Regex::new(r"\{.+}").wrap_err("Error in regex expression")?;
         let capture_names = names_regex
@@ -44,7 +45,7 @@ impl Parser {
         Ok(names)
     }
 
-    fn obtain_path(line: &String) -> Result<String> {
+    pub fn obtain_path(line: &String) -> Result<String> {
         let path_regex = Regex::new("\".+\"").wrap_err("Error in regex expression")?;
         let capture_path = path_regex
             .captures(&line)
@@ -103,19 +104,19 @@ impl Parser {
     }
 
     /// Search functions and variables in a file
-    fn search_in_file(names: &Vec<String>, file_path: &PathBuf) -> Result<Vec<String>> {
-        let file = File::open(file_path)?;
+    fn search_in_file(&self, name: &String, file_path: &PathBuf) -> Result<Vec<String>> {
+        let file = File::open(&file_path).wrap_err("Error opening file")?;
         let mut reader = BufReader::new(&file);
         let mut content: Vec<String> = vec![];
 
-        for name in names {
-            let content_match = Parser::search_name_in_content(name, &mut reader)?;
-            if content_match.len() > 0 {
-                for line in content_match {
-                    content.push(line)
-                }
+        //for name in names {
+        let content_match = Parser::search_name_in_content(name, &mut reader)?;
+        if content_match.len() > 0 {
+            for line in content_match {
+                content.push(line)
             }
         }
+        //}
 
         Ok(content)
     }
@@ -152,18 +153,69 @@ impl Parser {
         Ok(content_match)
     }
 
-    /// print imports in a temp file
-    pub fn print_imports(&self, imports: Vec<Import>, temp_file_path: &PathBuf) -> Result<()> {
-        for import in imports {
-            for export in &self.directory {
-                if export.path.contains(&import.path) {
-                    let parser_result =
-                        Parser::search_in_file(&import.names, &PathBuf::from(&export.path))?;
+    fn search_path_in_directory(&self, name: &String) -> Option<PathBuf> {
+        for import in &self.directory {
+            for n in &import.names {
+                if name.to_string() == n.to_string() {
+                    return Some(import.path_buf());
+                }
+            }
+        }
 
-                    write_vec_string_in_file(temp_file_path, parser_result)?;
-                } // if contains import.path
-            } // for directory
-        } // for imports
+        None
+    }
+
+    fn recursive_imports(&self, imports_list: &Import) -> Result<Import> {
+        let mut imports = imports_list.clone();
+        let mut names = vec![];
+
+        for n in &imports_list.names {
+            let name = n.clone();
+            let path = self
+                .search_path_in_directory(&name)
+                .wrap_err("Import isn't in Catrina")?;
+
+            let content_file =
+                file_to_vec_string(&path).wrap_err("Error in file-to-vec conversion")?;
+
+            for line in content_file {
+                if line.contains("import") && !line.contains("core.js") {
+                    names = Parser::obtain_names(&line)
+                        .wrap_err(format!("Error creating import from line {}", &line))?;
+
+                    for name in &names {
+                        imports.names.push(name.clone())
+                    }
+
+                    names.clear();
+                }
+            } // for content file
+        } // for names
+
+        imports.names.dedup();
+
+        Ok(imports)
+    } // recursive imports method
+
+    /// print imports in a temp file
+    pub fn print_imports(&self, imports: Import, temp_file_path: &PathBuf) -> Result<()> {
+        // TODO print recursive imports
+        let imports = self
+            .recursive_imports(&imports)
+            .wrap_err("Error obtaining internal dependencies")?;
+        for name in imports.names {
+            let path = self
+                .search_path_in_directory(&name)
+                .wrap_err("Import isn't in Catrina")?;
+
+            //for export in &self.directory {
+            //  if export.path.contains(&import.path) {
+            let parser_result = self.search_in_file(&name, &path)?;
+
+            write_vec_string_in_file(temp_file_path, parser_result)?;
+            //} // if contains import.path
+            //} // for directory
+        } // for names
 
         Ok(())
     } // print_imports method

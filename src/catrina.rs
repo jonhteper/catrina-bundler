@@ -22,12 +22,13 @@ mod utils;
 mod wizard;
 
 const CONFIG_FILE: &str = "catrina.config.json";
-pub const VERSION_APP: &str = "v0.2.0";
+pub const VERSION_APP: &str = "v0.3.0";
 const START_COMMAND: &str = "init";
 const BUILD_COMMAND: &str = "build";
 const MINIFY_COMMAND: &str = "minify";
 const COMBINE_COMMAND: &str = "combine";
 const ERROR_TO_STRING_MSJ: &str = "Error in to-string conversion";
+const ERROR_TO_STR_MSJ: &str = "Error in to-str conversion";
 
 /// Create a new project in current path, use npm or yarn depending on the flags
 fn catrina_new(skip_flag: bool, yarn_flag: bool) -> Result<()> {

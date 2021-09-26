@@ -96,18 +96,20 @@ impl Project {
         Ok(())
     }
 
-    fn get_imports_js(&self, counter: &mut usize) -> Result<Vec<Import>> {
-        let mut imports: Vec<Import> = vec![];
+    fn get_imports_js(&self, counter: &mut usize) -> Result<Import> {
+        let mut imports = Import::new();
+
         let input_file = File::open(&self.config.input_js).wrap_err("No such input file")?;
         let reader = BufReader::new(&input_file);
 
         for (i, file_line) in reader.lines().enumerate() {
             let line = file_line.unwrap_or("".to_string());
             if line.contains("import") && line.contains("catrina") && !line.contains("core") {
-                let import = Parser::new_import_by_line(&line, &self.config, false)
-                    .wrap_err(format!("Error obtaining export in line {}", &line))?;
-                imports.push(import);
-
+                let import_list = Parser::obtain_names(&line)
+                    .wrap_err(format!("Error obtaining import names in line {}", &line))?;
+                for imp in import_list {
+                    imports.names.push(imp);
+                }
                 *counter = i
             }
         } // loop
@@ -218,7 +220,7 @@ impl Project {
             "Error getting imports list"
         })?;
 
-        let parser_js = Parser::new(directory);
+        let parser_js = Parser::new(directory, self.config.clone());
         parser_js
             .print_imports(js_imports, &temp_location)
             .wrap_err_with(|| {
@@ -226,7 +228,7 @@ impl Project {
                 "Error printing imports in a temp file"
             })?;
 
-        self.copy_all_content_in_start(
+        self.copy_all_content(
             line_start,
             &PathBuf::from(&self.config.input_js),
             &temp_location,
@@ -261,54 +263,6 @@ impl Project {
         Ok(())
     }
 
-    /// Search imports in catrina and add necessary code
-    fn css_recursive_imports_css(
-        &self,
-        temp_path: &PathBuf,
-        imports_list: &Vec<Import>,
-        parser: &Parser_css,
-    ) -> Result<()> {
-        let file_content = file_to_vec_string(&temp_path).wrap_err(FILE_TO_VEC_ERR_MSJ)?;
-        let mut skip_lines: Vec<usize> = vec![];
-        let mut new_imports: Vec<Import> = vec![];
-        let mut next = false;
-        for (i, line) in file_content.iter().enumerate() {
-            let v = line.contains("/*Colors*/");
-            if !v && !next {
-                continue;
-            }
-            if v {
-                next = true;
-            }
-
-            if line.contains("@import") {
-                if !line.contains("core.css") {
-                    let import = Parser_css::extract_import(&line);
-                    for im in imports_list {
-                        if im.path != import.path {
-                            new_imports.push(import.clone());
-                        }
-                    } // for imports_list
-                } // if not core.css
-                skip_lines.push(i);
-            } // if contains @import
-        } // for file content
-
-        new_imports.dedup_by(|a, b| a.path.eq(&b.path));
-        skip_lines.dedup();
-
-        Parser_css::write_file_exclude_lines(&skip_lines, &file_content, &temp_path)
-            .wrap_err("Error writing clear imports code")?;
-
-        for import in new_imports {
-            parser
-                .print_import_file_no_imports(&import, &temp_path)
-                .wrap_err("Error writing import file without @import lines")?;
-        }
-
-        Ok(())
-    }
-
     /// bundle css file and copy fonts
     fn build_css(&self) -> Result<()> {
         let mut temp_location = env::temp_dir();
@@ -333,7 +287,14 @@ impl Project {
                 "Error printing css imports"
             })?;
 
-        self.copy_all_content_in_start(
+        parser_css
+            .recursive_imports(&temp_location, &imports)
+            .wrap_err_with(|| {
+                fs::remove_file(&temp_location).expect("Error deleting temporal file");
+                "Error with recursive catrina imports"
+            })?;
+
+        self.copy_all_content(
             line_start,
             &PathBuf::from(&self.config.input_css),
             &temp_location,
@@ -342,13 +303,6 @@ impl Project {
             fs::remove_file(&temp_location).expect("Error deleting temporal file");
             "Error coping main js content in a temp file"
         })?;
-
-        self.css_recursive_imports_css(&temp_location, &imports, &parser_css)
-            .wrap_err_with(|| {
-                fs::remove_file(&temp_location).expect("Error deleting temporal file");
-                "Error with recursive catrina imports"
-            })?;
-
         if self.config.minify {
             Parser_css::minify_file_content(&temp_location).wrap_err_with(|| {
                 fs::remove_file(&temp_location).expect("Error deleting temporal file");
