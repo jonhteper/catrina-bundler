@@ -11,5 +11,5 @@ tool:
 	cp target/release/catrina-bundler ./bin/catrina
 dev:
 	cargo fmt
-	cd src && cargo build
+	cargo build
 	cp target/debug/catrina-bundler ./bin/catrina

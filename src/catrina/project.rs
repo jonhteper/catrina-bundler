@@ -11,7 +11,7 @@ use crate::catrina::import::Import;
 use crate::catrina::js::Parser;
 use crate::catrina::lib::StdLib;
 use crate::catrina::utils::{
-    file_to_vec_string, getwd, random_name, write_vec_string_in_file,
+    file_to_vec_string, getwd, random_name, truncate_file, write_vec_string_in_file,
     write_vec_string_in_file_start, FILE_TO_VEC_ERR_MSJ,
 };
 use crate::catrina::CONFIG_FILE;
@@ -74,34 +74,42 @@ impl Project {
         Ok(())
     }
 
-    fn your_file_config_content() {
+    fn your_file_config_content() -> Result<()> {
         let mut data = String::new();
-        let reference = File::open(CONFIG_FILE).expect("Error reading config file");
+        let reference = File::open(CONFIG_FILE).wrap_err("Error reading config file")?;
         let mut br = BufReader::new(reference);
-        br.read_to_string(&mut data).expect("Error parsing data");
+        br.read_to_string(&mut data)
+            .wrap_err("Error parsing data")?;
         println!("\nYour project configuration:\n{}", data);
         println!("You can edit this configuration in file {}", CONFIG_FILE);
+        Ok(())
     }
 
-    pub fn start(&self) {
-        self.config.create_file();
-        self.create_environment();
+    pub fn start(&self) -> Result<()> {
+        self.config
+            .create_file()
+            .wrap_err("Error creating config file")?;
+        self.create_environment()
+            .wrap_err("Error creating project structure")?;
 
-        Project::your_file_config_content();
+        Project::your_file_config_content().wrap_err("Error in final ")?;
+        Ok(())
     }
 
-    fn get_imports_js(&self, counter: &mut usize) -> Result<Vec<Import>> {
-        let mut imports: Vec<Import> = vec![];
+    fn get_imports_js(&self, counter: &mut usize) -> Result<Import> {
+        let mut imports = Import::new();
+
         let input_file = File::open(&self.config.input_js).wrap_err("No such input file")?;
         let reader = BufReader::new(&input_file);
 
         for (i, file_line) in reader.lines().enumerate() {
             let line = file_line.unwrap_or("".to_string());
             if line.contains("import") && line.contains("catrina") && !line.contains("core") {
-                let import = Parser::new_import_by_line(&line, &self.config, false)
-                    .wrap_err(format!("Error obtaining export in line {}", &line))?;
-                imports.push(import);
-
+                let import_list = Parser::obtain_names(&line)
+                    .wrap_err(format!("Error obtaining import names in line {}", &line))?;
+                for imp in import_list {
+                    imports.names.push(imp);
+                }
                 *counter = i
             }
         } // loop
@@ -193,6 +201,32 @@ impl Project {
         Ok(())
     }
 
+    fn imports_to_top(temp_path: &PathBuf, pattern: String) -> Result<()> {
+        let mut file_content =
+            file_to_vec_string(&temp_path).wrap_err("Error in file-to-vec conversion")?;
+        let mut imports = vec![];
+
+        for (i, line) in file_content.clone().iter().enumerate() {
+            if line.contains(&pattern) {
+                imports.push(line.clone());
+                file_content[i] = "".to_string();
+            }
+        }
+
+        if imports.len() > 0 {
+            imports.push("\n".to_string());
+        }
+
+        truncate_file(&temp_path).wrap_err("Error deleting file content")?;
+
+        write_vec_string_in_file(&temp_path, imports).wrap_err("Error writing imports")?;
+
+        write_vec_string_in_file(&temp_path, file_content)
+            .wrap_err("Error printing file content")?;
+
+        Ok(())
+    }
+
     /// bundle js file
     fn build_js(&self) -> Result<()> {
         let mut temp_location = env::temp_dir();
@@ -220,7 +254,7 @@ impl Project {
                 "Error printing imports in a temp file"
             })?;
 
-        self.copy_all_content_in_start(
+        self.copy_all_content(
             line_start,
             &PathBuf::from(&self.config.input_js),
             &temp_location,
@@ -229,6 +263,9 @@ impl Project {
             fs::remove_file(&temp_location).expect("Error deleting temporal file");
             "Error coping main js content in a temp file"
         })?;
+
+        Project::imports_to_top(&temp_location, "import ".to_string())
+            .wrap_err("Error moving imports sentences to top")?;
 
         self.remove_js_exports(&temp_location).wrap_err_with(|| {
             fs::remove_file(&temp_location).expect("Error deleting temporal file");
@@ -252,54 +289,6 @@ impl Project {
         })?;
 
         fs::remove_file(&temp_location).wrap_err("Error deleting js temp file")?;
-        Ok(())
-    }
-
-    /// Search imports in catrina and add necessary code
-    fn css_recursive_imports_css(
-        &self,
-        temp_path: &PathBuf,
-        imports_list: &Vec<Import>,
-        parser: &Parser_css,
-    ) -> Result<()> {
-        let file_content = file_to_vec_string(&temp_path).wrap_err(FILE_TO_VEC_ERR_MSJ)?;
-        let mut skip_lines: Vec<usize> = vec![];
-        let mut new_imports: Vec<Import> = vec![];
-        let mut next = false;
-        for (i, line) in file_content.iter().enumerate() {
-            let v = line.contains("/*Colors*/");
-            if !v && !next {
-                continue;
-            }
-            if v {
-                next = true;
-            }
-
-            if line.contains("@import") {
-                if !line.contains("core.css") {
-                    let import = Parser_css::extract_import(&line);
-                    for im in imports_list {
-                        if im.path != import.path {
-                            new_imports.push(import.clone());
-                        }
-                    } // for imports_list
-                } // if not core.css
-                skip_lines.push(i);
-            } // if contains @import
-        } // for file content
-
-        new_imports.dedup_by(|a, b| a.path.eq(&b.path));
-        skip_lines.dedup();
-
-        Parser_css::write_file_exclude_lines(&skip_lines, &file_content, &temp_path)
-            .wrap_err("Error writing clear imports code")?;
-
-        for import in new_imports {
-            parser
-                .print_import_file_no_imports(&import, &temp_path)
-                .wrap_err("Error writing import file without @import lines")?;
-        }
-
         Ok(())
     }
 
@@ -327,7 +316,14 @@ impl Project {
                 "Error printing css imports"
             })?;
 
-        self.copy_all_content_in_start(
+        parser_css
+            .recursive_imports(&temp_location, &imports)
+            .wrap_err_with(|| {
+                fs::remove_file(&temp_location).expect("Error deleting temporal file");
+                "Error with recursive catrina imports"
+            })?;
+
+        self.copy_all_content(
             line_start,
             &PathBuf::from(&self.config.input_css),
             &temp_location,
@@ -336,13 +332,6 @@ impl Project {
             fs::remove_file(&temp_location).expect("Error deleting temporal file");
             "Error coping main js content in a temp file"
         })?;
-
-        self.css_recursive_imports_css(&temp_location, &imports, &parser_css)
-            .wrap_err_with(|| {
-                fs::remove_file(&temp_location).expect("Error deleting temporal file");
-                "Error with recursive catrina imports"
-            })?;
-
         if self.config.minify {
             Parser_css::minify_file_content(&temp_location).wrap_err_with(|| {
                 fs::remove_file(&temp_location).expect("Error deleting temporal file");
@@ -350,7 +339,10 @@ impl Project {
             })?;
         }
 
-        fs::copy(&temp_location, &self.config.out_css_path()).wrap_err_with(|| {
+        Project::imports_to_top(&temp_location, "@import".to_string())
+            .wrap_err("Error moving imports sentences to top")?;
+
+        fs::copy(&temp_location, &self.config.out_css_path_buf()).wrap_err_with(|| {
             fs::remove_file(&temp_location).expect("Error deleting temporal file");
             "Error replacing old bundle file"
         })?;
@@ -417,10 +409,12 @@ impl Project {
     } // build method
 }
 
-pub fn auto_project(project_name: &str) {
+pub fn auto_project(project_name: &str) -> Result<()> {
     let project = Project {
         config: standard_config(project_name),
     };
 
-    project.start();
+    project.start().wrap_err("Error starting project")?;
+
+    Ok(())
 }

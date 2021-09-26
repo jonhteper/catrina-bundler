@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 /// Js imports and exports struct
 #[derive(Debug, Clone)]
 pub struct Import {
@@ -11,5 +13,9 @@ impl Import {
             names: vec![],
             path: "".to_string(),
         }
+    }
+
+    pub fn path_buf(&self) -> PathBuf {
+        PathBuf::from(&self.path)
     }
 }

@@ -21,14 +21,14 @@ mod project;
 mod utils;
 mod wizard;
 
-const DEFAULT_PORT: &str = ":9095";
 const CONFIG_FILE: &str = "catrina.config.json";
-pub const VERSION_APP: &str = "v0.2.0";
+pub const VERSION_APP: &str = "v0.3.0";
 const START_COMMAND: &str = "init";
 const BUILD_COMMAND: &str = "build";
 const MINIFY_COMMAND: &str = "minify";
 const COMBINE_COMMAND: &str = "combine";
 const ERROR_TO_STRING_MSJ: &str = "Error in to-string conversion";
+const ERROR_TO_STR_MSJ: &str = "Error in to-str conversion";
 
 /// Create a new project in current path, use npm or yarn depending on the flags
 fn catrina_new(skip_flag: bool, yarn_flag: bool) -> Result<()> {
@@ -44,7 +44,7 @@ fn catrina_new(skip_flag: bool, yarn_flag: bool) -> Result<()> {
     println!("The project has been created successfully!");
 
     if skip_flag {
-        auto_project(project_name);
+        auto_project(project_name).wrap_err("Error initializing default project")?;
         return Ok(());
     }
 
@@ -52,9 +52,9 @@ fn catrina_new(skip_flag: bool, yarn_flag: bool) -> Result<()> {
 
     let r = read_user_response();
     if r == String::from("y") {
-        run_wizard(&project_name.to_string())
+        run_wizard(&project_name.to_string()).wrap_err("Error running wizard")?;
     } else {
-        auto_project(project_name)
+        auto_project(project_name).wrap_err("Error initializing default project")?;
     }
 
     Ok(())

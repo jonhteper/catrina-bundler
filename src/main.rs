@@ -10,6 +10,8 @@ extern crate serde_derive;
 extern crate clap;
 
 fn main() {
+    color_eyre::install().expect("Error with color_eyre crate");
+
     let matches = App::new("Catrina")
         .version(VERSION_APP)
         .author("jonhteper <jonhteper@triamseletea.com>")

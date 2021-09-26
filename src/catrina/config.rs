@@ -1,6 +1,6 @@
 use crate::catrina::utils::{file_to_string, getwd};
-use crate::catrina::{CONFIG_FILE, DEFAULT_PORT};
-use eyre::Result;
+use crate::catrina::CONFIG_FILE;
+use eyre::{Result, WrapErr};
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
@@ -15,7 +15,6 @@ pub struct Config {
     pub deploy_path: String,
     pub out_js: String,
     pub out_css: String,
-    pub server_port: String,
     pub location_lib: String,
     pub module: bool,
     pub minify: bool,
@@ -28,23 +27,24 @@ impl Config {
         Ok(config)
     }
 
-    pub fn create_file(&self) {
-        let data = serde_json::to_string_pretty(&self).unwrap();
-        let file = File::create(CONFIG_FILE).expect("Error creating config file");
+    pub fn create_file(&self) -> Result<()> {
+        let data = serde_json::to_string_pretty(&self).wrap_err("Error serialize data")?;
+        let file = File::create(CONFIG_FILE).wrap_err("Error creating config file")?;
 
         BufWriter::new(file)
             .write_all(data.as_bytes())
-            .expect("Error writing config file");
+            .wrap_err("Error writing config file")?;
+        Ok(())
     }
 
-    pub fn out_js_path(&self) -> PathBuf {
+    pub fn out_js_path_buf(&self) -> PathBuf {
         let mut path = PathBuf::from(&self.deploy_path);
         path.push(&self.out_js);
 
         path
     }
 
-    pub fn out_css_path(&self) -> PathBuf {
+    pub fn out_css_path_buf(&self) -> PathBuf {
         let mut path = PathBuf::from(&self.deploy_path);
         path.push(&self.out_css);
 
@@ -95,7 +95,6 @@ pub fn standard_config(project_name: &str) -> Config {
         deploy_path: "deploy".to_string(),
         out_js: format!("{}.main.js", project_name),
         out_css: format!("{}.styles.css", project_name),
-        server_port: DEFAULT_PORT.to_string(),
         location_lib: location.to_string(),
         module: false,
         minify: false,
