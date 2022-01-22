@@ -1,16 +1,14 @@
-extern crate serde;
-extern crate serde_json;
-
-use crate::catrina::config::Config;
-use crate::catrina::import::Import;
-use crate::catrina::utils::{
+use super::config::Config;
+use super::import::Import;
+use super::utils::{
     conditional_write_vec_string_in_file, file_to_string, file_to_vec_string, getwd, truncate_file,
     write_vec_string_in_file, FILE_TO_VEC_ERR_MSJ,
 };
-use crate::catrina::ERROR_TO_STR_MSJ;
+use super::ERROR_TO_STR_MSJ;
 use eyre::{ContextCompat, Result, WrapErr};
 use fs_extra::dir;
 use html_minifier::css::minify;
+use serde_derive::{Deserialize, Serialize};
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::PathBuf;

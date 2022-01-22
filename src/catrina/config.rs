@@ -1,12 +1,10 @@
-use crate::catrina::utils::{file_to_string, getwd};
-use crate::catrina::CONFIG_FILE;
+use super::utils::{file_to_string, getwd};
+use super::CONFIG_FILE;
 use eyre::{Result, WrapErr};
+use serde_derive::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
-
-extern crate serde;
-extern crate serde_json;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {

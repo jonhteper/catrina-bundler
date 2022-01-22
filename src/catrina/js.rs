@@ -4,9 +4,9 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use substring::Substring;
 
-use crate::catrina::config::Config;
-use crate::catrina::import::Import;
-use crate::catrina::utils::{file_to_string, file_to_vec_string, write_vec_string_in_file};
+use super::config::Config;
+use super::import::Import;
+use super::utils::{file_to_string, file_to_vec_string, write_vec_string_in_file};
 use html_minifier::js::minify;
 use regex::Regex;
 

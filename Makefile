@@ -1,5 +1,7 @@
 all: prepare tool
 
+native: prepare tool
+
 prepare:
 	rm -r ./bin || true
 	mkdir ./bin
@@ -8,8 +10,12 @@ prepare:
 tool:
 	cargo fmt
 	cargo build --release
-	cp target/release/catrina-bundler ./bin/catrina
+	cp target/release/catrina ./bin/catrina
 dev:
 	cargo fmt
 	cargo build
-	cp target/debug/catrina-bundler ./bin/catrina
+	cp target/debug/catrina ./bin/catrina
+
+all-targets:
+	sh ./all-targets.sh
+

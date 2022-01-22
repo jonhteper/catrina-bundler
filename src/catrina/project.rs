@@ -5,22 +5,22 @@ use std::{env, fs};
 
 use eyre::{Result, WrapErr};
 
-use crate::catrina::config::{standard_config, Config};
-use crate::catrina::css::Parser as Parser_css;
-use crate::catrina::import::Import;
-use crate::catrina::js::Parser;
-use crate::catrina::lib::StdLib;
-use crate::catrina::utils::{
+use super::catrina_lib::StdLib;
+use super::config::{standard_config, Config};
+use super::css::Parser as Parser_css;
+use super::import::Import;
+use super::js::Parser;
+use super::utils::{
     file_to_vec_string, getwd, random_name, truncate_file, write_vec_string_in_file,
     write_vec_string_in_file_start, FILE_TO_VEC_ERR_MSJ,
 };
-use crate::catrina::CONFIG_FILE;
+use super::CONFIG_FILE;
 
 extern crate serde;
 extern crate serde_json;
 
 /// Abstraction of a project
-pub(crate) struct Project {
+pub struct Project {
     pub config: Config,
 }
 

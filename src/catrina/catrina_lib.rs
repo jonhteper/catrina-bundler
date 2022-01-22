@@ -1,7 +1,7 @@
-use crate::catrina::config::Config;
-use crate::catrina::import::Import;
-use crate::catrina::js::Parser;
-use crate::catrina::utils::random_name;
+use super::config::Config;
+use super::import::Import;
+use super::js::Parser;
+use super::utils::random_name;
 use eyre::{Result, WrapErr};
 use std::fs;
 use std::fs::{File, OpenOptions};
@@ -33,6 +33,8 @@ impl StdLib {
     }
 
     fn install_by_npm() -> Result<()> {
+        //TODO: Adapt commands for Windows. Maybe use npm_rs
+
         /* exec
          * npm init -y
          * npm install --save catrina
@@ -46,6 +48,8 @@ impl StdLib {
     }
 
     fn install_by_yarn() -> Result<()> {
+        //TODO: Adapt commands for Windows
+
         /* exec
          * yarn init -y
          * yarn add catrina

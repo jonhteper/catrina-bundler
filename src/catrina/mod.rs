@@ -1,32 +1,32 @@
-use crate::args::CatrinaArgs;
-use crate::catrina::css::Parser as Parser_css;
-use crate::catrina::js::Parser as Parser_js;
-use crate::catrina::lib::StdLib;
-use crate::catrina::project::{auto_project, Project};
-use crate::catrina::utils::{
-    file_to_vec_string, getwd, read_user_response, write_vec_string_in_file, FILE_TO_VEC_ERR_MSJ,
-};
-use crate::catrina::wizard::run_wizard;
+#![allow(dead_code)]
+
+extern crate serde;
+extern crate serde_json;
+
+use catrina_lib::StdLib;
+use css::Parser as Parser_css;
 use eyre::{ContextCompat, Result, WrapErr};
+use js::Parser as Parser_js;
+use project::{auto_project, Project};
 use std::fs;
 use std::fs::File;
 use std::path::PathBuf;
+use utils::{
+    file_to_vec_string, getwd, read_user_response, write_vec_string_in_file, FILE_TO_VEC_ERR_MSJ,
+};
+use wizard::run_wizard;
 
+mod catrina_lib;
 mod config;
 mod css;
 mod import;
 mod js;
-mod lib;
 mod project;
 mod utils;
 mod wizard;
 
-const CONFIG_FILE: &str = "catrina.config.json";
-pub const VERSION_APP: &str = "v0.3.0";
-const START_COMMAND: &str = "init";
-const BUILD_COMMAND: &str = "build";
-const MINIFY_COMMAND: &str = "minify";
-const COMBINE_COMMAND: &str = "combine";
+pub const CONFIG_FILE: &str = "catrina.config.json";
+
 const ERROR_TO_STRING_MSJ: &str = "Error in to-string conversion";
 const ERROR_TO_STR_MSJ: &str = "Error in to-str conversion";
 
@@ -137,7 +137,7 @@ fn catrina_minify(origin_path: &str, final_path: &str, delete_original: bool) ->
 /// # Caution
 /// If the final file exists, and the flag -m is active, this file will be deleting and a minified
 /// file replace it
-fn catrina_combine(args: &CatrinaArgs) -> Result<()> {
+/*fn catrina_combine(args: &CatrinaArgs) -> Result<()> {
     let first_file = PathBuf::from(&args.filepath_1);
     let second_file = PathBuf::from(&args.filepath_2);
     let final_file = PathBuf::from(&args.filename);
@@ -174,31 +174,11 @@ fn catrina_combine(args: &CatrinaArgs) -> Result<()> {
 
     println!("Files combined! Result file saved in {:?}", &final_file);
     Ok(())
-}
+}*/
 
 /// Run the bundler functions.
 fn catrina_build() -> Result<()> {
     let project = project_from_location()?;
     project.build()?;
-    Ok(())
-}
-
-/// Run the app
-pub fn catrina_tool(args: CatrinaArgs) -> Result<()> {
-    match &args.action {
-        &START_COMMAND => {
-            catrina_new(args.skip, args.yarn).wrap_err("Error creating a new project structure")?
-        }
-        &BUILD_COMMAND => catrina_build().wrap_err("Error bundling project")?,
-        &MINIFY_COMMAND => catrina_minify(args.filepath_1, args.filepath_2, false)
-            .wrap_err("Error minifying file")?,
-        &COMBINE_COMMAND => catrina_combine(&args).wrap_err("Error in file combination")?,
-        _ => {
-            println!(
-                "No such command {}. Run catrina --help for more info.",
-                &args.action
-            );
-        }
-    }
     Ok(())
 }

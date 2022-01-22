@@ -1,6 +1,5 @@
 use crate::args::CatrinaArgs;
-use crate::catrina::{catrina_tool, VERSION_APP};
-use clap::{App, Arg};
+use clap::{App, Arg, ArgMatches, SubCommand};
 
 mod args;
 mod catrina;
@@ -9,52 +8,132 @@ mod catrina;
 extern crate serde_derive;
 extern crate clap;
 
-fn main() {
-    color_eyre::install().expect("Error with color_eyre crate");
+const VERSION_APP: &str = env!("CARGO_PKG_VERSION");
 
-    let matches = App::new("Catrina")
+fn app_matches() -> ArgMatches<'static> {
+    let app = App::new("Catrina")
         .version(VERSION_APP)
         .author("jonhteper <jonhteper@triamseletea.com>")
         .about("A mini bundler for npm catrina package")
-        .arg(
-            Arg::with_name("ACTION")
-                .help("The principal order by Catrina, you can use \"init\", \"build\", \"minify\" or \"combine\"")
-                .required(true)
-                .index(1),
+        .subcommand(
+            SubCommand::with_name("init")
+                .about("Start a project in current directory")
+                .long_about("\nStarts a project in current directory. \
+                 If the directory is empty, creates a new project using npm (by default) and downloads catrina. \
+                 If finds an existing project and catrina isn't install, installs catrina with npm (by default). \
+                 If catrina is currently installed, just creates the config file.")
+                .arg(
+                    Arg::with_name("skip")
+                        .short("d")
+                        .long("default")
+                        .help("Skip configuration questions"),
+                )
+                .arg(
+                    Arg::with_name("yarn")
+                        .long("yarn")
+                        .help("Use yarn instead of npm."),
+                ),
         )
-        .arg(Arg::with_name("PATH").help("Filepath for \"minify\" command or \"combine\" command").index(2))
-        .arg(Arg::with_name("PATH2").help("Filepath for second file in \"combine\" command or final path for \"minify\" command").index(3))
-        .arg(Arg::with_name("NAME").help("Filepath final file in \"combine\" command").index(4))
-        .arg(
-            Arg::with_name("skip")
-                .short("s")
-                .help("Skip configuration questions"),
-        )
-        .arg(
-            Arg::with_name("yarn")
-                .short("Y")
-                .help("Use yarn instead of npm"),
-        )
-        .arg(
-            Arg::with_name("minify")
-                .short("m")
-                .help("Minify the result file for \"bundle\" command"),
-        )
-        .get_matches();
+        .subcommand(
+            SubCommand::with_name("build")
+                .about("Build project if the config file is in the current directory")
+                .long_about("Build project if the config file is in the current directory. \
 
-    // new, update, build, run or version
-    let args = CatrinaArgs {
-        action: matches.value_of("ACTION").expect("Action its necessary"),
-        filepath_1: matches.value_of("PATH").unwrap_or(""),
-        filepath_2: matches.value_of("PATH2").unwrap_or(""),
-        filename: matches.value_of("NAME").unwrap_or(""),
-        skip: matches.is_present("skip"),
-        yarn: matches.is_present("yarn"),
-        minify: matches.is_present("minify"),
-    };
+                ")
+                .arg(
+                    Arg::with_name("minify")
+                        .long("minify")
+                        .help("Minify the result file"),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("minify")
+                .about("Minify .js, .css and .html files")
+                .arg(
+                    Arg::with_name("input")
+                        .help("Files to minify")
+                        .short("i")
+                        .long("input")
+                        .value_name("INPUT-FILES")
+                        .takes_value(true)
+                        .multiple(true)
+                        .required(true),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("join")
+                .about("Concatenate files")
+                .arg(
+                    Arg::with_name("input")
+                        .help("Files to join")
+                        .short("i")
+                        .long("input")
+                        .value_name("INPUT-FILES")
+                        .takes_value(true)
+                        .multiple(true)
+                        .required(true),
+                )
+                .arg(
+                    Arg::with_name("output")
+                        .help("Result file of concatenation")
+                        .short("o")
+                        .long("output")
+                        .value_name("OUTPUT-FILE")
+                        .takes_value(true)
+                        .required(true),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("bundle")
+                .about("Experimental function for universal bundling .js and .css files")
+                .arg(
+                    Arg::with_name("input")
+                        .help("File for bundling")
+                        .short("i")
+                        .long("input")
+                        .value_name("INPUT-FILE")
+                        .takes_value(true)
+                        .required(true),
+                )
+                .arg(
+                    Arg::with_name("output")
+                        .help("Bundle result file")
+                        .short("o")
+                        .long("output")
+                        .value_name("OUTPUT-FILE")
+                        .takes_value(true)
+                        .required(true),
+                ),
+        );
 
-    match catrina_tool(args) {
-        Err(e) => panic!("{:?}", e),
-        _ => println!("No errors"),
+    app.get_matches()
+}
+
+fn main() {
+    color_eyre::install().expect("Error with color_eyre crate");
+    let matches = app_matches();
+
+    let mut subcommand = "";
+    if let (sub, Some(_match)) = matches.subcommand() {
+        subcommand = sub;
+    }
+
+    match subcommand {
+        "build" => {
+            println!("{} function runs...", subcommand);
+        }
+        "bundle" => {
+            println!("{} function runs...", subcommand);
+        }
+        "init" => {
+            println!("{} function runs...", subcommand);
+        }
+        "join" => {
+            println!("{} function runs...", subcommand);
+        }
+        "minify" => {
+            println!("{} function runs...", subcommand);
+        }
+        _ => {}
     }
 }

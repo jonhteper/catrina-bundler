@@ -1,6 +1,6 @@
-use crate::catrina::config::standard_config;
-use crate::catrina::project::Project;
-use crate::catrina::utils::read_user_response;
+use super::config::standard_config;
+use super::project::Project;
+use super::utils::read_user_response;
 use eyre::{Result, WrapErr};
 
 pub fn run_wizard(project_name: &String) -> Result<()> {
